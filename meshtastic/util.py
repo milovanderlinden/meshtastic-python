@@ -123,14 +123,14 @@ def catchAndIgnore(reason, closure):
         logging.error(f"Exception thrown in {reason}: {ex}")
 
 
-def findPorts(eliminate_duplicates: bool=False) -> List[str]:
+def findPorts(eliminate_duplicates: bool = False) -> List[str]:
     """Find all ports that might have meshtastic devices
        eliminate_duplicates will run the eliminate_duplicate_port() on the collection
 
     Returns:
         list -- a list of device paths
     """
-    l = list(
+    _ports = list(
         map(
             lambda port: port.device,
             filter(
@@ -139,10 +139,10 @@ def findPorts(eliminate_duplicates: bool=False) -> List[str]:
             ),
         )
     )
-    l.sort()
+    _ports.sort()
     if eliminate_duplicates:
-        l = eliminate_duplicate_port(l)
-    return l
+        _ports = eliminate_duplicate_port(_ports)
+    return _ports
 
 
 class dotdict(dict):
