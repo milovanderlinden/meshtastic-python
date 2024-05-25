@@ -7,9 +7,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from meshtastic import mt_config
-
-from ..tcp_interface import TCPInterface
-from ..tunnel import Tunnel, onTunnelReceive
+from meshtastic.tcp_interface import TCPInterface
+from meshtastic.tunnel import Tunnel, onTunnelReceive
 
 
 @pytest.mark.unit

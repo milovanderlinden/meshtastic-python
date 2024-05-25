@@ -6,13 +6,13 @@ import sys
 import time
 import traceback
 
-from dotmap import DotMap # type: ignore[import-untyped]
-from pubsub import pub # type: ignore[import-untyped]
+from dotmap import DotMap  # type: ignore[import-untyped]
+from pubsub import pub  # type: ignore[import-untyped]
 
-import meshtastic.util
-from meshtastic import BROADCAST_NUM
-from meshtastic.serial_interface import SerialInterface
-from meshtastic.tcp_interface import TCPInterface
+from . import util
+from .constants import BROADCAST_NUM
+from .serial_interface import SerialInterface
+from .tcp_interface import TCPInterface
 
 """The interfaces we are using for our tests"""
 interfaces = None
@@ -155,9 +155,9 @@ def testAll(numTests=5):
     This is called from the cli with the "--test" option.
 
     """
-    ports = meshtastic.util.findPorts(True)
+    ports = util.findPorts(True)
     if len(ports) < 2:
-        meshtastic.util.our_exit(
+        util.our_exit(
             "Warning: Must have at least two devices connected to USB."
         )
 

@@ -2,10 +2,10 @@
 """
 import logging
 
-from pubsub import pub # type: ignore[import-untyped]
+from pubsub import pub  # type: ignore[import-untyped]
 
-from meshtastic import portnums_pb2, remote_hardware_pb2
-from meshtastic.util import our_exit
+from . import portnums_pb2, remote_hardware_pb2
+from .util import our_exit
 
 
 def onGPIOreceive(packet, interface):

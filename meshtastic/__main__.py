@@ -9,18 +9,27 @@ import platform
 import sys
 import time
 
-import pyqrcode # type: ignore[import-untyped]
+import pyqrcode  # type: ignore[import-untyped]
 import yaml
 from google.protobuf.json_format import MessageToDict
-from pubsub import pub # type: ignore[import-untyped]
+from pubsub import pub  # type: ignore[import-untyped]
 
-import meshtastic.test
-import meshtastic.util
-from meshtastic import mt_config
-from meshtastic import channel_pb2, config_pb2, portnums_pb2, remote_hardware, BROADCAST_ADDR
-from meshtastic.version import get_active_version
-from meshtastic.ble_interface import BLEInterface
-from meshtastic.mesh_interface import MeshInterface
+from . import (
+    mt_config,
+    portnums_pb2,
+    channel_pb2,
+    util,
+    remote_hardware,
+    config_pb2,
+    test,
+    tcp_interface,
+    serial_interface
+)
+from .constants import BROADCAST_ADDR
+from .ble_interface import BLEInterface
+from .mesh_interface import MeshInterface
+from .version import get_active_version
+
 
 def onReceive(packet, interface):
     """Callback invoked when a packet arrives"""
@@ -57,11 +66,13 @@ def onConnection(interface, topic=pub.AUTO_TOPIC):  # pylint: disable=W0613
     """Callback invoked when we connect/disconnect from a radio"""
     print(f"Connection changed: {topic.getName()}")
 
+
 def checkChannel(interface: MeshInterface, channelIndex: int) -> bool:
     """Given an interface and channel index, return True if that channel is non-disabled on the local node"""
     ch = interface.localNode.getChannelByChannelIndex(channelIndex)
     logging.debug(f"ch:{ch}")
-    return (ch and ch.role != channel_pb2.Channel.Role.DISABLED)
+    return ch and ch.role != channel_pb2.Channel.Role.DISABLED
+
 
 def getPref(node, comp_name):
     """Get a channel or preferences value"""
@@ -69,9 +80,9 @@ def getPref(node, comp_name):
     name = splitCompoundName(comp_name)
     wholeField = name[0] == name[1]  # We want the whole field
 
-    camel_name = meshtastic.util.snake_to_camel(name[1])
+    camel_name = util.snake_to_camel(name[1])
     # Note: protobufs has the keys in snake_case, so snake internally
-    snake_name = meshtastic.util.camel_to_snake(name[1])
+    snake_name = util.camel_to_snake(name[1])
     logging.debug(f"snake_name:{snake_name} camel_name:{camel_name}")
     logging.debug(f"use camel:{mt_config.camel_case}")
 
@@ -137,9 +148,10 @@ def splitCompoundName(comp_name):
         name.append(comp_name)
     return name
 
+
 def traverseConfig(config_root, config, interface_config):
     """Iterate through current config level preferences and either traverse deeper if preference is a dict or set preference"""
-    snake_name = meshtastic.util.camel_to_snake(config_root)
+    snake_name = util.camel_to_snake(config_root)
     for pref in config:
         pref_name = f"{snake_name}.{pref}"
         if isinstance(config[pref], dict):
@@ -153,13 +165,14 @@ def traverseConfig(config_root, config, interface_config):
 
     return True
 
+
 def setPref(config, comp_name, valStr) -> bool:
     """Set a channel or preferences value"""
 
     name = splitCompoundName(comp_name)
 
-    snake_name = meshtastic.util.camel_to_snake(name[-1])
-    camel_name = meshtastic.util.snake_to_camel(name[-1])
+    snake_name = util.camel_to_snake(name[-1])
+    camel_name = util.snake_to_camel(name[-1])
     logging.debug(f"snake_name:{snake_name}")
     logging.debug(f"camel_name:{camel_name}")
 
@@ -168,7 +181,7 @@ def setPref(config, comp_name, valStr) -> bool:
     config_type = objDesc.fields_by_name.get(name[0])
     if config_type and config_type.message_type is not None:
         for name_part in name[1:-1]:
-            part_snake_name = meshtastic.util.camel_to_snake((name_part))
+            part_snake_name = util.camel_to_snake((name_part))
             config_part = getattr(config, config_type.name)
             config_type = config_type.message_type.fields_by_name.get(part_snake_name)
     pref = None
@@ -181,7 +194,7 @@ def setPref(config, comp_name, valStr) -> bool:
     if (not pref) or (not config_type):
         return False
 
-    val = meshtastic.util.fromStr(valStr)
+    val = util.fromStr(valStr)
     logging.debug(f"valStr:{valStr} val:{val}")
 
     if snake_name == "wifi_psk" and len(valStr) < 8:
@@ -251,7 +264,6 @@ def onConnected(interface):
     )
     try:
         args = mt_config.args
-
         # do not print this line if we are exporting the config
         if not args.export_config:
             print("Connected to radio")
@@ -426,7 +438,7 @@ def onConnected(interface):
                     onResponse=interface.getNode(args.dest, False).onAckNak,
                 )
             else:
-                meshtastic.util.our_exit(
+                util.our_exit(
                     f"Warning: {channelIndex} is not a valid channel. Channel must not be DISABLED."
                 )
 
@@ -441,7 +453,7 @@ def onConnected(interface):
 
         if args.request_telemetry:
             if args.dest == BROADCAST_ADDR:
-                meshtastic.util.our_exit("Warning: Must use a destination node ID.")
+                util.our_exit("Warning: Must use a destination node ID.")
             else:
                 channelIndex = mt_config.channel_index or 0
                 if checkChannel(interface, channelIndex):
@@ -450,7 +462,7 @@ def onConnected(interface):
 
         if args.request_position:
             if args.dest == BROADCAST_ADDR:
-                meshtastic.util.our_exit("Warning: Must use a destination node ID.")
+                util.our_exit("Warning: Must use a destination node ID.")
             else:
                 channelIndex = mt_config.channel_index or 0
                 if checkChannel(interface, channelIndex):
@@ -459,7 +471,7 @@ def onConnected(interface):
 
         if args.gpio_wrb or args.gpio_rd or args.gpio_watch:
             if args.dest == BROADCAST_ADDR:
-                meshtastic.util.our_exit("Warning: Must use a destination node ID.")
+                util.our_exit("Warning: Must use a destination node ID.")
             else:
                 rhc = remote_hardware.RemoteHardwareClient(interface)
 
@@ -524,11 +536,13 @@ def onConnected(interface):
             else:
                 if mt_config.camel_case:
                     print(
-                        f"{node.localConfig.__class__.__name__} and {node.moduleConfig.__class__.__name__} do not have an attribute {pref[0]}."
+                        f"{node.localConfig.__class__.__name__} and {node.moduleConfig.__class__.__name__} do not "
+                        f"have an attribute {pref[0]}."
                     )
                 else:
                     print(
-                        f"{node.localConfig.__class__.__name__} and {node.moduleConfig.__class__.__name__} do not have attribute {pref[0]}."
+                        f"{node.localConfig.__class__.__name__} and {node.moduleConfig.__class__.__name__} do not "
+                        f"have attribute {pref[0]}."
                     )
                 print("Choices are...")
                 printConfig(node.localConfig)
@@ -599,7 +613,7 @@ def onConnected(interface):
                     for section in configuration["config"]:
                         traverseConfig(section, configuration["config"][section], localConfig)
                         interface.getNode(args.dest).writeConfig(
-                            meshtastic.util.camel_to_snake(section)
+                            util.camel_to_snake(section)
                         )
 
                 if "module_config" in configuration:
@@ -607,7 +621,7 @@ def onConnected(interface):
                     for section in configuration["module_config"]:
                         traverseConfig(section, configuration["module_config"][section], moduleConfig)
                         interface.getNode(args.dest).writeConfig(
-                            meshtastic.util.camel_to_snake(section)
+                            util.camel_to_snake(section)
                         )
 
                 interface.getNode(args.dest, False).commitSettingsTransaction()
@@ -631,27 +645,27 @@ def onConnected(interface):
             channelIndex = mt_config.channel_index
             if channelIndex is not None:
                 # Since we set the channel index after adding a channel, don't allow --ch-index
-                meshtastic.util.our_exit(
+                util.our_exit(
                     "Warning: '--ch-add' and '--ch-index' are incompatible. Channel not added."
                 )
             closeNow = True
             if len(args.ch_add) > 10:
-                meshtastic.util.our_exit(
+                util.our_exit(
                     "Warning: Channel name must be shorter. Channel not added."
                 )
             n = interface.getNode(args.dest)
             ch = n.getChannelByName(args.ch_add)
             if ch:
-                meshtastic.util.our_exit(
+                util.our_exit(
                     f"Warning: This node already has a '{args.ch_add}' channel. No changes were made."
                 )
             else:
                 # get the first channel that is disabled (i.e., available)
                 ch = n.getDisabledChannel()
                 if not ch:
-                    meshtastic.util.our_exit("Warning: No free channels were found")
+                    util.our_exit("Warning: No free channels were found")
                 chs = channel_pb2.ChannelSettings()
-                chs.psk = meshtastic.util.genPSK256()
+                chs.psk = util.genPSK256()
                 chs.name = args.ch_add
                 ch.settings.CopyFrom(chs)
                 ch.role = channel_pb2.Channel.Role.SECONDARY
@@ -666,12 +680,12 @@ def onConnected(interface):
 
             channelIndex = mt_config.channel_index
             if channelIndex is None:
-                meshtastic.util.our_exit(
+                util.our_exit(
                     "Warning: Need to specify '--ch-index' for '--ch-del'.", 1
                 )
             else:
                 if channelIndex == 0:
-                    meshtastic.util.our_exit(
+                    util.our_exit(
                         "Warning: Cannot delete primary channel.", 1
                     )
                 else:
@@ -682,7 +696,7 @@ def onConnected(interface):
             """Set one of the simple modem_config"""
             channelIndex = mt_config.channel_index
             if channelIndex is not None and channelIndex > 0:
-                meshtastic.util.our_exit(
+                util.our_exit(
                     "Warning: Cannot set modem preset for non-primary channel", 1
                 )
             # Overwrite modem_preset
@@ -717,7 +731,7 @@ def onConnected(interface):
 
             channelIndex = mt_config.channel_index
             if channelIndex is None:
-                meshtastic.util.our_exit("Warning: Need to specify '--ch-index'.", 1)
+                util.our_exit("Warning: Need to specify '--ch-index'.", 1)
             ch = interface.getNode(args.dest).channels[channelIndex]
 
             if args.ch_enable or args.ch_disable:
@@ -726,7 +740,7 @@ def onConnected(interface):
                     "which can cause errors in some clients. Whenever possible, use --ch-add and --ch-del instead."
                 )
                 if channelIndex == 0:
-                    meshtastic.util.our_exit(
+                    util.our_exit(
                         "Warning: Cannot enable/disable PRIMARY channel."
                     )
 
@@ -740,7 +754,7 @@ def onConnected(interface):
             for pref in args.ch_set or []:
                 if pref[0] == "psk":
                     found = True
-                    ch.settings.psk = meshtastic.util.fromPSK(pref[1])
+                    ch.settings.psk = util.fromPSK(pref[1])
                 else:
                     found = setPref(ch.settings, pref[0], pref[1])
                 if not found:
@@ -795,7 +809,7 @@ def onConnected(interface):
                 interface.getNode(args.dest).showInfo()
                 closeNow = True
                 print("")
-                pypi_version = meshtastic.util.check_if_newer_version()
+                pypi_version = util.check_if_newer_version()
                 if pypi_version:
                     print(
                         f"*** A newer version v{pypi_version} is available!"
@@ -868,7 +882,8 @@ def onConnected(interface):
     except Exception as ex:
         print(f"Aborting due to: {ex}")
         interface.close()  # close the connection now, so that our app exits
-        sys.exit(1)
+        raise ex
+        # sys.exit(1)
 
 
 def printConfig(config):
@@ -882,7 +897,7 @@ def printConfig(config):
             for field in config.message_type.fields:
                 tmp_name = f"{config_section.name}.{field.name}"
                 if mt_config.camel_case:
-                    tmp_name = meshtastic.util.snake_to_camel(tmp_name)
+                    tmp_name = util.snake_to_camel(tmp_name)
                 names.append(tmp_name)
             for temp_name in sorted(names):
                 print(f"    {temp_name}")
@@ -942,7 +957,7 @@ def export_config(interface):
         prefs = {}
         for pref in config:
             if mt_config.camel_case:
-                prefs[meshtastic.util.snake_to_camel(pref)] = config[pref]
+                prefs[util.snake_to_camel(pref)] = config[pref]
             else:
                 prefs[pref] = config[pref]
         if mt_config.camel_case:
@@ -980,11 +995,11 @@ def common():
 
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)
-        meshtastic.util.our_exit("", 1)
+        util.our_exit("", 1)
     else:
         if args.support:
-            meshtastic.util.support_info()
-            meshtastic.util.our_exit("", 0)
+            util.support_info()
+            util.our_exit("", 0)
 
         if args.ch_index is not None:
             channelIndex = int(args.ch_index)
@@ -1004,13 +1019,13 @@ def common():
                 "This option has been deprecated, see help below for the correct replacement..."
             )
             parser.print_help(sys.stderr)
-            meshtastic.util.our_exit("", 1)
+            util.our_exit("", 1)
         elif args.test:
-            result = meshtastic.test.testAll()
+            result = test.testAll()
             if not result:
-                meshtastic.util.our_exit("Warning: Test was not successful.")
+                util.our_exit("Warning: Test was not successful.")
             else:
-                meshtastic.util.our_exit("Test was a success.", 0)
+                util.our_exit("Test was a success.", 0)
         else:
             if args.seriallog == "stdout":
                 logfile = sys.stdout
@@ -1030,26 +1045,26 @@ def common():
                 logging.debug("BLE scan starting")
                 client = BLEInterface(None, debugOut=logfile, noProto=args.noproto)
                 try:
-                    for x in client.scan():
+                    for x in scan():
                         print(f"Found: name='{x[1].local_name}' address='{x[0].address}'")
                 finally:
                     client.close()
-                meshtastic.util.our_exit("BLE scan finished", 0)
+                util.our_exit("BLE scan finished", 0)
                 return
             elif args.ble:
                 client = BLEInterface(args.ble, debugOut=logfile, noProto=args.noproto)
             elif args.host:
                 try:
-                    client = meshtastic.tcp_interface.TCPInterface(
+                    client = tcp_interface.TCPInterface(
                         args.host, debugOut=logfile, noProto=args.noproto
                     )
                 except Exception as ex:
-                    meshtastic.util.our_exit(
+                    util.our_exit(
                         f"Error connecting to {args.host}:{ex}", 1
                     )
             else:
                 try:
-                    client = meshtastic.serial_interface.SerialInterface(
+                    client = serial_interface.SerialInterface(
                         args.port, debugOut=logfile, noProto=args.noproto
                     )
                 except PermissionError as ex:
@@ -1061,17 +1076,16 @@ def common():
                     message += f"     sudo usermod -a -G dialout {username}\n"
                     message += "  After running that command, log out and re-login for it to take effect.\n"
                     message += f"Error was:{ex}"
-                    meshtastic.util.our_exit(message)
+                    util.our_exit(message)
                 if client.devPath is None:
                     try:
-                        client = meshtastic.tcp_interface.TCPInterface(
+                        client = tcp_interface.TCPInterface(
                             "localhost", debugOut=logfile, noProto=args.noproto
                         )
                     except Exception as ex:
-                        meshtastic.util.our_exit(
+                        util.our_exit(
                             f"Error connecting to localhost:{ex}", 1
                         )
-
 
             # We assume client is fully connected now
             onConnected(client)
@@ -1085,6 +1099,7 @@ def common():
 
         # don't call exit, background threads might be running still
         # sys.exit(0)
+
 
 def addConnectionArgs(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
     """Add connection specifiation arguments"""

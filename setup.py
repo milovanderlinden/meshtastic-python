@@ -3,6 +3,7 @@
 import pathlib
 
 from setuptools import setup
+from meshtastic.version import __version__
 
 # The directory containing this file
 HERE = pathlib.Path(__file__).parent
@@ -13,7 +14,7 @@ with open("README.md", "r") as fh:
 # This call to setup() does all the work
 setup(
     name="meshtastic",
-    version="2.3.9",
+    version=__version__,
     description="Python API & client shell for talking to Meshtastic devices",
     long_description=long_description,
     long_description_content_type="text/markdown",

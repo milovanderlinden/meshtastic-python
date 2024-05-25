@@ -10,6 +10,7 @@ from unittest.mock import mock_open, MagicMock, patch
 
 import pytest
 
+from meshtastic import mt_config
 from meshtastic.__main__ import (
     export_config,
     initParser,
@@ -19,20 +20,10 @@ from meshtastic.__main__ import (
     onReceive,
     tunnelMain,
 )
-from meshtastic import mt_config
-
-from ..channel_pb2 import Channel # pylint: disable=E0611
-
-# from ..ble_interface import BLEInterface
-from ..node import Node
-
-# from ..radioconfig_pb2 import UserPreferences
-# import meshtastic.config_pb2
-from ..serial_interface import SerialInterface
-from ..tcp_interface import TCPInterface
-
-# from ..remote_hardware import onGPIOreceive
-# from ..config_pb2 import Config
+from meshtastic.channel_pb2 import Channel
+from meshtastic.node import Node
+from meshtastic.serial_interface import SerialInterface
+from meshtastic.tcp_interface import TCPInterface
 
 
 @pytest.mark.unit
@@ -386,7 +377,7 @@ def test_main_onConnected_exception(capsys):
     mt_config.args = sys.argv
 
     def throw_an_exception(junk):
-        raise Exception("Fake exception.") # pylint: disable=W0719
+        raise Exception("Fake exception.")  # pylint: disable=W0719
 
     iface = MagicMock(autospec=SerialInterface)
     with patch("meshtastic.serial_interface.SerialInterface", return_value=iface):

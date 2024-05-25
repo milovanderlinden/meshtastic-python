@@ -4,7 +4,7 @@ import sys
 
 from pubsub import pub
 
-import meshtastic
+from meshtastic.tcp_interface import TCPInterface
 
 
 def onConnection(
@@ -15,4 +15,4 @@ def onConnection(
 
 
 pub.subscribe(onConnection, "meshtastic.connection.established")
-interface = meshtastic.TCPInterface(sys.argv[1])
+interface = TCPInterface(sys.argv[1])

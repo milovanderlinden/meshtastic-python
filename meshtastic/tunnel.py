@@ -1,4 +1,5 @@
-"""Code for IP tunnel over a mesh
+"""
+Code for IP tunnel over a mesh
 
 # Note python-pytuntap was too buggy
 # using pip3 install pytap2
@@ -19,11 +20,12 @@ import logging
 import platform
 import threading
 
-from pubsub import pub # type: ignore[import-untyped]
+from pubsub import pub  # type: ignore[import-untyped]
 from pytap2 import TapDevice
 
-from meshtastic import portnums_pb2, mt_config
-from meshtastic.util import ipstr, readnet_u16
+from . import mt_config
+from . import portnums_pb2
+from .util import ipstr, readnet_u16
 
 
 def onTunnelReceive(packet, interface):  # pylint: disable=W0613
@@ -73,7 +75,7 @@ class Tunnel:
             1900,  # SSDP
             5353,  # multicast DNS
             9001,  # Yggdrasil multicast discovery
-            64512, # cjdns beacon
+            64512,  # cjdns beacon
         }
 
         """A list of TCP services to block"""
@@ -87,7 +89,7 @@ class Tunnel:
             0x80,  # Service-Specific Connection-Oriented Protocol in a Multilink and Connectionless Environment
         }
 
-        # A new non standard log level that is lower level than DEBUG
+        # A new non-standard log level that is lower level than DEBUG
         self.LOG_TRACE = 5
 
         # TODO: check if root?

@@ -1,9 +1,7 @@
-import time
-
-import meshtastic
+from meshtastic.serial_interface import SerialInterface
 
 interface = (
-    meshtastic.SerialInterface()
+    SerialInterface()
 )  # By default will try to find a meshtastic device, otherwise provide a device path like /dev/ttyUSB0
 interface.sendText("hello mesh")
 interface.close()

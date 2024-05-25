@@ -8,12 +8,7 @@ import google.protobuf.descriptor
 import google.protobuf.internal.containers
 import google.protobuf.internal.enum_type_wrapper
 import google.protobuf.message
-import meshtastic.channel_pb2
-import meshtastic.config_pb2
-import meshtastic.module_config_pb2
-import meshtastic.portnums_pb2
-import meshtastic.telemetry_pb2
-import meshtastic.xmodem_pb2
+
 import sys
 import typing
 
@@ -2112,7 +2107,7 @@ global___FromRadio = FromRadio
 class ToRadio(google.protobuf.message.Message):
     """
     Packets/commands to the radio will be written (reliably) to the toRadio characteristic.
-    Once the write completes the phone can assume it is handled.
+    Once write completes, the phone can assume it is handled.
     """
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor

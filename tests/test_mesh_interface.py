@@ -6,13 +6,15 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from .. import mesh_pb2, config_pb2, BROADCAST_ADDR, LOCAL_ADDR
-from ..mesh_interface import MeshInterface
-from ..node import Node
+from meshtastic import config_pb2, mesh_pb2
+from meshtastic.constants import LOCAL_ADDR, BROADCAST_ADDR
+from meshtastic.mesh_interface import MeshInterface
+from meshtastic.node import Node
+from meshtastic.util import Timeout
+
 
 # TODO
 # from ..config import Config
-from ..util import Timeout
 
 
 @pytest.mark.unit
@@ -650,7 +652,7 @@ def test_waitForConfig(capsys):
     """Test waitForConfig()"""
     iface = MeshInterface(noProto=True)
     # override how long to wait
-    iface._timeout = Timeout(0.01)
+    iface._timeout = Timeout(1)
     with pytest.raises(MeshInterface.MeshInterfaceError) as pytest_wrapped_e:
         iface.waitForConfig()
         assert pytest_wrapped_e.type == MeshInterface.MeshInterfaceError

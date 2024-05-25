@@ -5,8 +5,8 @@ from unittest.mock import patch
 
 import pytest
 
-from .. import config_pb2
-from ..tcp_interface import TCPInterface
+from meshtastic import config_pb2
+from meshtastic.tcp_interface import TCPInterface
 
 
 @pytest.mark.unit

@@ -5,9 +5,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from ..stream_interface import StreamInterface
-
-# import re
+from meshtastic.stream_interface import StreamInterface
 
 
 @pytest.mark.unit
@@ -22,7 +20,7 @@ def test_StreamInterface():
 @pytest.mark.unitslow
 @pytest.mark.usefixtures("reset_mt_config")
 def test_StreamInterface_with_noProto(caplog):
-    """Test that we can instantiate a StreamInterface based on nonProto
+    """Test that we can instantiate a StreamInterface based on nonProto,
     and we can read/write bytes from a mocked stream
     """
     stream = MagicMock()

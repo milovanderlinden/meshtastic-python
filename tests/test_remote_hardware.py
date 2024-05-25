@@ -6,8 +6,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from ..remote_hardware import RemoteHardwareClient, onGPIOreceive
-from ..serial_interface import SerialInterface
+from meshtastic.remote_hardware import RemoteHardwareClient, onGPIOreceive
+from meshtastic.serial_interface import SerialInterface
 
 
 @pytest.mark.unit

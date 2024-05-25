@@ -13,23 +13,22 @@ from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional, Union
 
 import google.protobuf.json_format
-import timeago # type: ignore[import-untyped]
-from pubsub import pub # type: ignore[import-untyped]
+import timeago  # type: ignore[import-untyped]
+from pubsub import pub  # type: ignore[import-untyped]
 from tabulate import tabulate
 
-import meshtastic.node
-from meshtastic import (
+from . import (
+    node,
     mesh_pb2,
     portnums_pb2,
-    telemetry_pb2,
-    BROADCAST_ADDR,
-    BROADCAST_NUM,
-    LOCAL_ADDR,
-    ResponseHandler,
-    protocols,
-    publishingThread,
+    telemetry_pb2
 )
-from meshtastic.util import (
+
+from .constants import BROADCAST_ADDR, LOCAL_ADDR, BROADCAST_NUM, publishingThread
+from .known_protocol import protocols
+from .response_handler import ResponseHandler
+from .schemas import User, Info, Metadata, NodeInfo, Channel, Config, ModuleConfig, Position
+from .util import (
     Acknowledgment,
     Timeout,
     convert_mac_addr,
@@ -49,14 +48,25 @@ class MeshInterface:
     nodes
     debugOut
     """
+    my_info: Info = None  # We don't have device info yet
+    metadata: Metadata = Metadata()  # Metadata object
+    nodes: Dict[str, NodeInfo] = {}
+    nodesByNum: Dict[int, NodeInfo] = {}
+    channels: List[Channel] = [Channel()] * 8  # 8 empty channel definitions
+    config: Config = Config()  # Config object
+    module_config: ModuleConfig = ModuleConfig()  # ModuleConfig Object
+    mask: int = None  # used in gpio read and gpio watch
+    gotResponse: bool = False  # used in gpio read
+    failure = None
 
     class MeshInterfaceError(Exception):
         """An exception class for general mesh interface errors"""
+
         def __init__(self, message):
             self.message = message
             super().__init__(self.message)
 
-    def __init__(self, debugOut=None, noProto: bool=False) -> None:
+    def __init__(self, debugOut=None, noProto: bool = False) -> None:
         """Constructor
 
         Keyword Arguments:
@@ -64,13 +74,12 @@ class MeshInterface:
                        link - just be a dumb serial client.
         """
         self.debugOut = debugOut
-        self.nodes: Optional[Dict[str,Dict]] = None  # FIXME
         self.isConnected: threading.Event = threading.Event()
         self.noProto: bool = noProto
-        self.localNode: meshtastic.node.Node = meshtastic.node.Node(self, -1)  # We fixup nodenum later
-        self.myInfo: Optional[mesh_pb2.MyNodeInfo] = None  # We don't have device info yet
+        self.localNode: node.Node = node.Node(self, -1)  # We fixup node number later
+
         self.metadata: Optional[mesh_pb2.DeviceMetadata] = None  # We don't have device metadata yet
-        self.responseHandlers: Dict[int,ResponseHandler] = {}  # A map from request ID to the handler
+        self.responseHandlers: Dict[int, ResponseHandler] = {}  # A map from request ID to the handler
         self.failure = (
             None  # If we've encountered a fatal exception it will be kept here
         )
@@ -79,10 +88,8 @@ class MeshInterface:
         self.heartbeatTimer: Optional[threading.Timer] = None
         random.seed()  # FIXME, we should not clobber the random seedval here, instead tell user they must call it
         self.currentPacketId: int = random.randint(0, 0xFFFFFFFF)
-        self.nodesByNum: Optional[Dict[int, Dict]] = None
         self.configId: Optional[int] = None
-        self.gotResponse: bool = False  # used in gpio read
-        self.mask: Optional[int] = None  # used in gpio read and gpio watch
+
         self.queueStatus: Optional[mesh_pb2.QueueStatus] = None
         self.queue: collections.OrderedDict = collections.OrderedDict()
         self._localChannels = None
@@ -107,38 +114,28 @@ class MeshInterface:
         self.close()
 
     def showInfo(self, file=sys.stdout) -> str:  # pylint: disable=W0613
-        """Show human readable summary about this object"""
-        owner = f"Owner: {self.getLongName()} ({self.getShortName()})"
-        myinfo = ""
-        if self.myInfo:
-            myinfo = f"\nMy info: {message_to_json(self.myInfo)}"
-        metadata = ""
-        if self.metadata:
-            metadata = f"\nMetadata: {message_to_json(self.metadata)}"
-        mesh = "\n\nNodes in mesh: "
+        """Show human-readable summary about this object"""
+        _node_info = self.getMyNodeInfo()
+        _owner = f"Owner: {_node_info.user.long_name} ({_node_info.user.short_name})"
+        _info = f"\nMy info: {_node_info.model_dump_json(by_alias=True, exclude_none=True, exclude={'user'})}"
+        _metadata = f"\nMetadata: {self.metadata.model_dump_json(by_alias=True, exclude_none=True)}"
+        _mesh = "\n\nNodes in mesh: "
         nodes = {}
         if self.nodes:
             for n in self.nodes.values():
                 # when the TBeam is first booted, it sometimes shows the raw data
-                # so, we will just remove any raw keys
-                keys_to_remove = ("raw", "decoded", "payload")
-                n2 = remove_keys_from_dict(keys_to_remove, n)
+                if n.user:
+                    nodes[n.user.id] = n
 
-                # if we have 'macaddr', re-format it
-                if "macaddr" in n2["user"]:
-                    val = n2["user"]["macaddr"]
-                    # decode the base64 value
-                    addr = convert_mac_addr(val)
-                    n2["user"]["macaddr"] = addr
+        info = _owner + _info + _metadata + _mesh + json.dumps(
+            [value.model_dump(by_alias=True, exclude_none=True) for key, value in nodes.items()],
+            indent=2,
+            default=str
+        )
+        print(info)
+        return info
 
-                # use id as dictionary key for correct json format in list of nodes
-                nodeid = n2["user"]["id"]
-                nodes[nodeid] = n2
-        infos = owner + myinfo + metadata + mesh + json.dumps(nodes, indent=2)
-        print(infos)
-        return infos
-
-    def showNodes(self, includeSelf: bool=True, file=sys.stdout) -> str:  # pylint: disable=W0613
+    def showNodes(self, includeSelf: bool = True, file=sys.stdout) -> str:  # pylint: disable=W0613
         """Show table summary of nodes in mesh"""
 
         def formatFloat(value, precision=2, unit="") -> Optional[str]:
@@ -162,13 +159,13 @@ class MeshInterface:
         rows: List[Dict[str, Any]] = []
         if self.nodesByNum:
             logging.debug(f"self.nodes:{self.nodes}")
-            for node in self.nodesByNum.values():
+            for _node in self.nodesByNum.values():
                 if not includeSelf and node["num"] == self.localNode.nodeNum:
                     continue
 
-                row = {"N": 0, "User": f"UNK: {node['num']}", "ID": f"!{node['num']:08x}"}
+                row = {"N": 0, "User": f"UNK: {_node['num']}", "ID": f"!{_node['num']:08x}"}
 
-                user = node.get("user")
+                user = _node.get("user")
                 if user:
                     row.update(
                         {
@@ -178,7 +175,7 @@ class MeshInterface:
                         }
                     )
 
-                pos = node.get("position")
+                pos = _node.get("position")
                 if pos:
                     row.update(
                         {
@@ -188,15 +185,15 @@ class MeshInterface:
                         }
                     )
 
-                metrics = node.get("deviceMetrics")
+                metrics = _node.get("deviceMetrics")
                 if metrics:
-                    batteryLevel = metrics.get("batteryLevel")
-                    if batteryLevel is not None:
-                        if batteryLevel == 0:
-                            batteryString = "Powered"
+                    battery_level = metrics.get("batteryLevel")
+                    if battery_level is not None:
+                        if battery_level == 0:
+                            battery_string = "Powered"
                         else:
-                            batteryString = str(batteryLevel) + "%"
-                        row.update({"Battery": batteryString})
+                            battery_string = str(battery_level) + "%"
+                        row.update({"Battery": battery_string})
                     row.update(
                         {
                             "Channel util.": formatFloat(
@@ -210,11 +207,11 @@ class MeshInterface:
 
                 row.update(
                     {
-                        "SNR": formatFloat(node.get("snr"), 2, " dB"),
-                        "Hops Away": node.get("hopsAway", "0/unknown"),
-                        "Channel": node.get("channel", 0),
-                        "LastHeard": getLH(node.get("lastHeard")),
-                        "Since": getTimeAgo(node.get("lastHeard")),
+                        "SNR": formatFloat(_node.get("snr"), 2, " dB"),
+                        "Hops Away": _node.get("hopsAway", "0/unknown"),
+                        "Channel": _node.get("channel", 0),
+                        "LastHeard": getLH(_node.get("lastHeard")),
+                        "Since": getTimeAgo(_node.get("lastHeard")),
                     }
                 )
 
@@ -228,12 +225,12 @@ class MeshInterface:
         print(table)
         return table
 
-    def getNode(self, nodeId: str, requestChannels: bool=True) -> meshtastic.node.Node:
+    def getNode(self, nodeId: str, requestChannels: bool = True) -> node.Node:
         """Return a node object which contains device settings and channel info"""
         if nodeId in (LOCAL_ADDR, BROADCAST_ADDR):
             return self.localNode
         else:
-            n = meshtastic.node.Node(self, nodeId)
+            n = node.Node(self, nodeId)
             # Only request device settings and channel info when necessary
             if requestChannels:
                 logging.debug("About to requestChannels")
@@ -243,13 +240,13 @@ class MeshInterface:
             return n
 
     def sendText(
-        self,
-        text: str,
-        destinationId: Union[int, str]=BROADCAST_ADDR,
-        wantAck: bool=False,
-        wantResponse: bool=False,
-        onResponse: Optional[Callable[[mesh_pb2.MeshPacket], Any]]=None,
-        channelIndex: int=0,
+            self,
+            text: str,
+            destinationId: Union[int, str] = BROADCAST_ADDR,
+            wantAck: bool = False,
+            wantResponse: bool = False,
+            onResponse: Optional[Callable[[mesh_pb2.MeshPacket], Any]] = None,
+            channelIndex: int = 0,
     ):
         """Send a utf8 string to some other node, if the node has a display it
            will also be shown on the device.
@@ -282,14 +279,14 @@ class MeshInterface:
         )
 
     def sendData(
-        self,
-        data,
-        destinationId: Union[int, str]=BROADCAST_ADDR,
-        portNum: portnums_pb2.PortNum.ValueType=portnums_pb2.PortNum.PRIVATE_APP,
-        wantAck: bool=False,
-        wantResponse: bool=False,
-        onResponse: Optional[Callable[[mesh_pb2.MeshPacket], Any]]=None,
-        channelIndex: int=0,
+            self,
+            data,
+            destinationId: Union[int, str] = BROADCAST_ADDR,
+            portNum: portnums_pb2.PortNum.ValueType = portnums_pb2.PortNum.PRIVATE_APP,
+            wantAck: bool = False,
+            wantResponse: bool = False,
+            onResponse: Optional[Callable[[mesh_pb2.MeshPacket], Any]] = None,
+            channelIndex: int = 0,
     ):
         """Send a data packet to some other node
 
@@ -326,33 +323,33 @@ class MeshInterface:
             raise MeshInterface.MeshInterfaceError("Data payload too big")
 
         if (
-            portNum == portnums_pb2.PortNum.UNKNOWN_APP
-        ):  # we are now more strict wrt port numbers
+                portNum == portnums_pb2.PortNum.UNKNOWN_APP
+        ):  # we are now strict in relation to port numbers
             our_exit("Warning: A non-zero port number must be specified")
 
-        meshPacket = mesh_pb2.MeshPacket()
-        meshPacket.channel = channelIndex
-        meshPacket.decoded.payload = data
-        meshPacket.decoded.portnum = portNum
-        meshPacket.decoded.want_response = wantResponse
-        meshPacket.id = self._generatePacketId()
+        mesh_packet = mesh_pb2.MeshPacket()
+        mesh_packet.channel = channelIndex
+        mesh_packet.decoded.payload = data
+        mesh_packet.decoded.portnum = portNum
+        mesh_packet.decoded.want_response = wantResponse
+        mesh_packet.id = self._generatePacketId()
 
         if onResponse is not None:
-            logging.debug(f"Setting a response handler for requestId {meshPacket.id}")
-            self._addResponseHandler(meshPacket.id, onResponse)
-        p = self._sendPacket(meshPacket, destinationId, wantAck=wantAck)
+            logging.debug(f"Setting a response handler for requestId {mesh_packet.id}")
+            self._addResponseHandler(mesh_packet.id, onResponse)
+        p = self._sendPacket(mesh_packet, destinationId, wantAck=wantAck)
         return p
 
     def sendPosition(
-        self,
-        latitude: float=0.0,
-        longitude: float=0.0,
-        altitude: int=0,
-        timeSec: int=0,
-        destinationId: Union[int, str]=BROADCAST_ADDR,
-        wantAck: bool=False,
-        wantResponse: bool=False,
-        channelIndex: int=0,
+            self,
+            latitude: float = 0.0,
+            longitude: float = 0.0,
+            altitude: int = 0,
+            timeSec: int = 0,
+            destinationId: Union[int, str] = BROADCAST_ADDR,
+            wantAck: bool = False,
+            wantResponse: bool = False,
+            channelIndex: int = 0,
     ):
         """
         Send a position packet to some other node (normally a broadcast)
@@ -410,13 +407,13 @@ class MeshInterface:
 
             ret = "Position received: "
             if position.latitude_i != 0 and position.longitude_i != 0:
-                ret += f"({position.latitude_i * 10**-7}, {position.longitude_i * 10**-7})"
+                ret += f"({position.latitude_i * 10 ** -7}, {position.longitude_i * 10 ** -7})"
             else:
                 ret += "(unknown)"
             if position.altitude != 0:
                 ret += f" {position.altitude}m"
 
-            if position.precision_bits not in [0,32]:
+            if position.precision_bits not in [0, 32]:
                 ret += f" precision:{position.precision_bits}"
             elif position.precision_bits == 32:
                 ret += " full precision"
@@ -429,7 +426,7 @@ class MeshInterface:
             if p["decoded"]["routing"]["errorReason"] == 'NO_RESPONSE':
                 our_exit("No response from node. At least firmware 2.1.22 is required on the destination node.")
 
-    def sendTraceRoute(self, dest: Union[int, str], hopLimit: int, channelIndex: int=0):
+    def sendTraceRoute(self, dest: Union[int, str], hopLimit: int, channelIndex: int = 0):
         """Send the trace route"""
         r = mesh_pb2.RouteDiscovery()
         self.sendData(
@@ -460,7 +457,8 @@ class MeshInterface:
 
         self._acknowledgment.receivedTraceRoute = True
 
-    def sendTelemetry(self, destinationId: Union[int,str]=BROADCAST_ADDR, wantResponse: bool=False, channelIndex: int=0):
+    def sendTelemetry(self, destinationId: Union[int, str] = BROADCAST_ADDR, wantResponse: bool = False,
+                      channelIndex: int = 0):
         """Send telemetry and optionally ask for a response"""
         r = telemetry_pb2.Telemetry()
 
@@ -524,7 +522,8 @@ class MeshInterface:
     def _addResponseHandler(self, requestId: int, callback: Callable):
         self.responseHandlers[requestId] = ResponseHandler(callback)
 
-    def _sendPacket(self, meshPacket: mesh_pb2.MeshPacket, destinationId: Union[int,str]=BROADCAST_ADDR, wantAck: bool=False):
+    def _sendPacket(self, meshPacket: mesh_pb2.MeshPacket, destinationId: Union[int, str] = BROADCAST_ADDR,
+                    wantAck: bool = False):
         """Send a MeshPacket to the specified node (or if unspecified, broadcast).
         You probably don't want this - use sendData instead.
 
@@ -533,7 +532,7 @@ class MeshInterface:
         """
 
         # We allow users to talk to the local node before we've completed the full connection flow...
-        if self.myInfo is not None and destinationId != self.myInfo.my_node_num:
+        if self.my_info is not None and destinationId != self.my_info.node_number:
             self._waitConnected()
 
         toRadio = mesh_pb2.ToRadio()
@@ -546,10 +545,10 @@ class MeshInterface:
         elif destinationId == BROADCAST_ADDR:
             nodeNum = BROADCAST_NUM
         elif destinationId == LOCAL_ADDR:
-            if self.myInfo:
-                nodeNum = self.myInfo.my_node_num
+            if self.my_info:
+                nodeNum = self.my_info.node_number
             else:
-                our_exit("Warning: No myInfo found.")
+                our_exit("Warning: No my_info found.")
         # A simple hex style nodeid - we can parse this without needing the DB
         elif destinationId.startswith("!"):
             nodeNum = int(destinationId[1:], 16)
@@ -587,8 +586,8 @@ class MeshInterface:
     def waitForConfig(self):
         """Block until radio config is received. Returns True if config has been received."""
         success = (
-            self._timeout.waitForSet(self, attrs=("myInfo", "nodes"))
-            and self.localNode.waitForConfig()
+                self._timeout.waitForSet(self, attrs=("my_info", "nodes"))
+                and self.localNode.waitForConfig()
         )
         if not success:
             raise MeshInterface.MeshInterfaceError("Timed out waiting for interface config")
@@ -617,33 +616,12 @@ class MeshInterface:
         if not success:
             raise MeshInterface.MeshInterfaceError("Timed out waiting for position")
 
-    def getMyNodeInfo(self) -> Optional[Dict]:
+    def getMyNodeInfo(self) -> Optional[NodeInfo]:
         """Get info about my node."""
-        if self.myInfo is None or self.nodesByNum is None:
+        if self.my_info is None or self.nodesByNum is None:
             return None
         logging.debug(f"self.nodesByNum:{self.nodesByNum}")
-        return self.nodesByNum.get(self.myInfo.my_node_num)
-
-    def getMyUser(self):
-        """Get user"""
-        nodeInfo = self.getMyNodeInfo()
-        if nodeInfo is not None:
-            return nodeInfo.get("user")
-        return None
-
-    def getLongName(self):
-        """Get long name"""
-        user = self.getMyUser()
-        if user is not None:
-            return user.get("longName", None)
-        return None
-
-    def getShortName(self):
-        """Get short name"""
-        user = self.getMyUser()
-        if user is not None:
-            return user.get("shortName", None)
-        return None
+        return self.nodesByNum.get(self.my_info.node_number)
 
     def _waitConnected(self, timeout=30.0):
         """Block until the initial node db download is complete, or timeout
@@ -704,15 +682,15 @@ class MeshInterface:
 
     def _startConfig(self):
         """Start device packets flowing"""
-        self.myInfo = None
+        self.my_info = None
         self.nodes = {}  # nodes keyed by ID
-        self.nodesByNum = {}  # nodes keyed by nodenum
-        self._localChannels = [] # empty until we start getting channels pushed from the device (during config)
+        self.nodesByNum = {}  # nodes keyed by node number
+        self._localChannels = []  # empty until we start getting channels pushed from the device (during config)
 
-        startConfig = mesh_pb2.ToRadio()
+        start_config = mesh_pb2.ToRadio()
         self.configId = random.randint(0, 0xFFFFFFFF)
-        startConfig.want_config_id = self.configId
-        self._sendToRadio(startConfig)
+        start_config.want_config_id = self.configId
+        self._sendToRadio(start_config)
 
     def _sendDisconnect(self):
         """Tell device we are done using it"""
@@ -741,14 +719,14 @@ class MeshInterface:
             # logging.debug(f"Sending toRadio: {stripnl(toRadio)}")
 
             if not toRadio.HasField("packet"):
-                # not a meshpacket -- send immediately, give queue a chance,
+                # not a mesh packet -- send immediately, give queue a chance,
                 # this makes heartbeat trigger queue
                 self._sendToRadioImpl(toRadio)
             else:
-                # meshpacket -- queue
+                # mesh packet -- queue
                 self.queue[toRadio.packet.id] = toRadio
 
-            resentQueue = collections.OrderedDict()
+            resent_queue = collections.OrderedDict()
 
             while self.queue:
                 # logging.warn("queue: " + " ".join(f'{k:08x}' for k in self.queue))
@@ -756,28 +734,28 @@ class MeshInterface:
                     logging.debug("Waiting for free space in TX Queue")
                     time.sleep(0.5)
                 try:
-                    toResend = self.queue.popitem(last=False)
+                    to_resend = self.queue.popitem(last=False)
                 except KeyError:
                     break
-                packetId, packet = toResend
+                _id, packet = to_resend
                 # logging.warn(f"packet: {packetId:08x} {packet}")
-                resentQueue[packetId] = packet
+                resent_queue[_id] = packet
                 if packet is False:
                     continue
                 self._queueClaim()
                 if packet != toRadio:
-                    logging.debug(f"Resending packet ID {packetId:08x} {packet}")
+                    logging.debug(f"Resending packet ID {_id:08x} {packet}")
                 self._sendToRadioImpl(packet)
 
             # logging.warn("resentQueue: " + " ".join(f'{k:08x}' for k in resentQueue))
-            for packetId, packet in resentQueue.items():
+            for _id, packet in resent_queue.items():
                 if (
-                    self.queue.pop(packetId, False) is False
+                        self.queue.pop(_id, False) is False
                 ):  # Packet got acked under us
-                    logging.debug(f"packet {packetId:08x} got acked under us")
+                    logging.debug(f"packet {_id:08x} got acked under us")
                     continue
                 if packet:
-                    self.queue[packetId] = packet
+                    self.queue[_id] = packet
             # logging.warn("queue + resentQueue: " + " ".join(f'{k:08x}' for k in self.queue))
 
     def _sendToRadioImpl(self, toRadio: mesh_pb2.ToRadio) -> None:
@@ -789,8 +767,6 @@ class MeshInterface:
         Done with initial config messages, now send regular MeshPackets
         to ask for settings and channels
         """
-        # This is no longer necessary because the current protocol statemachine has already proactively sent us the locally visible channels
-        # self.localNode.requestChannels()
         self.localNode.setChannels(self._localChannels)
 
         # the following should only be called after we have settings and channels
@@ -799,184 +775,88 @@ class MeshInterface:
     def _handleQueueStatusFromRadio(self, queueStatus) -> None:
         self.queueStatus = queueStatus
         logging.debug(
-            f"TX QUEUE free {queueStatus.free} of {queueStatus.maxlen}, res = {queueStatus.res}, id = {queueStatus.mesh_packet_id:08x} "
+            f"TX QUEUE free {queueStatus.free} of {queueStatus.maxlen}," 
+            f"res = ({queueStatus.res}, id) = {queueStatus.mesh_packet_id:08x} "
         )
 
         if queueStatus.res:
             return
 
         # logging.warn("queue: " + " ".join(f'{k:08x}' for k in self.queue))
-        justQueued = self.queue.pop(queueStatus.mesh_packet_id, None)
+        just_queued = self.queue.pop(queueStatus.mesh_packet_id, None)
 
-        if justQueued is None and queueStatus.mesh_packet_id != 0:
+        if just_queued is None and queueStatus.mesh_packet_id != 0:
             self.queue[queueStatus.mesh_packet_id] = False
             logging.debug(
                 f"Reply for unexpected packet ID {queueStatus.mesh_packet_id:08x}"
             )
-        # logging.warn("queue: " + " ".join(f'{k:08x}' for k in self.queue))
 
     def _handleFromRadio(self, fromRadioBytes):
         """
-        Handle a packet that arrived from the radio(update model and publish events)
+        Handle a packet that arrived from the radio
+        (update model and publish events) called by subclasses
+        """
 
-        Called by subclasses."""
-        fromRadio = mesh_pb2.FromRadio()
-        fromRadio.ParseFromString(fromRadioBytes)
-        logging.debug(
-            f"in mesh_interface.py _handleFromRadio() fromRadioBytes: {fromRadioBytes}"
-        )
-        asDict = google.protobuf.json_format.MessageToDict(fromRadio)
-        logging.debug(f"Received from radio: {fromRadio}")
-        if fromRadio.HasField("my_info"):
-            self.myInfo = fromRadio.my_info
-            self.localNode.nodeNum = self.myInfo.my_node_num
-            logging.debug(f"Received myinfo: {stripnl(fromRadio.my_info)}")
+        _from_radio = mesh_pb2.FromRadio()
+        _from_radio.ParseFromString(fromRadioBytes)
+        _message = google.protobuf.json_format.MessageToDict(_from_radio)
 
-            failmsg = None
+        if "myInfo" in _message:
+            self.my_info = Info(**_message["myInfo"])
+            self.localNode.nodeNum = self.my_info.node_number
+            logging.debug(f"Received myinfo: {stripnl(_from_radio.my_info)}")
 
-            if failmsg:
-                self.failure = MeshInterface.MeshInterfaceError(failmsg)
-                self.isConnected.set()  # let waitConnected return this exception
-                self.close()
+        elif "metadata" in _message:
+            self.metadata = Metadata(**_message["metadata"])
+            logging.debug(f"Received device metadata: {stripnl(_from_radio.metadata)}")
 
-        elif fromRadio.HasField("metadata"):
-            self.metadata = fromRadio.metadata
-            logging.debug(f"Received device metadata: {stripnl(fromRadio.metadata)}")
+        elif "nodeInfo" in _message:
+            _node_info = NodeInfo(**_message["nodeInfo"])
+            logging.debug(f"Received nodeinfo: {_node_info.dict()}")
 
-        elif fromRadio.HasField("node_info"):
-            node = asDict["nodeInfo"]
-            try:
-                newpos = self._fixupPosition(node["position"])
-                node["position"] = newpos
-            except:
-                logging.debug("Node without position")
-
-            logging.debug(f"Received nodeinfo: {node}")
-
-            self.nodesByNum[node["num"]] = node
-            if "user" in node:  # Some nodes might not have user/ids assigned yet
-                if "id" in node["user"]:
-                    self.nodes[node["user"]["id"]] = node
+            self.nodesByNum[_node_info.num] = _node_info
+            if _node_info.user is not None:  # Some nodes might not have user/ids assigned yet
+                if _node_info.user is not None and _node_info.user.id is not None:
+                    self.nodes[_node_info.user.id] = _node_info
             publishingThread.queueWork(
                 lambda: pub.sendMessage(
-                    "meshtastic.node.updated", node=node, interface=self
+                    "meshtastic.node.updated", node=_node_info.dict(), interface=self
                 )
             )
-        elif fromRadio.config_complete_id == self.configId:
+        elif "channel" in _message:
+            _channel = Channel(**_message["channel"])
+            self.channels[_channel.index] = _channel
+
+        elif "config" in _message:
+            self.config.update(**_message["config"])
+
+        elif "moduleConfig" in _message:
+            self.module_config.update(**_message["moduleConfig"])
+
+        elif _from_radio.config_complete_id == self.configId:
             # we ignore the config_complete_id, it is unneeded for our
             # stream API fromRadio.config_complete_id
             logging.debug(f"Config complete ID {self.configId}")
             self._handleConfigComplete()
-        elif fromRadio.HasField("channel"):
-            self._handleChannel(fromRadio.channel)
-        elif fromRadio.HasField("packet"):
-            self._handlePacketFromRadio(fromRadio.packet)
 
-        elif fromRadio.HasField("queueStatus"):
-            self._handleQueueStatusFromRadio(fromRadio.queueStatus)
-
-        elif fromRadio.HasField("mqttClientProxyMessage"):
-            publishingThread.queueWork(
-                lambda: pub.sendMessage(
-                    "meshtastic.mqttclientproxymessage", proxymessage=fromRadio.mqttClientProxyMessage, interface=self
-                )
-            )
-
-        elif fromRadio.HasField("xmodemPacket"):
-            publishingThread.queueWork(
-                lambda: pub.sendMessage(
-                    "meshtastic.xmodempacket", packet=fromRadio.xmodemPacket, interface=self
-                )
-            )
-
-        elif fromRadio.HasField("rebooted") and fromRadio.rebooted:
+        elif _from_radio.HasField("rebooted") and _from_radio.rebooted:
             # Tell clients the device went away.  Careful not to call the overridden
             # subclass version that closes the serial port
             MeshInterface._disconnected(self)
 
             self._startConfig()  # redownload the node db etc...
 
-        elif fromRadio.HasField("config") or fromRadio.HasField("moduleConfig"):
-            if fromRadio.config.HasField("device"):
-                self.localNode.localConfig.device.CopyFrom(fromRadio.config.device)
-            elif fromRadio.config.HasField("position"):
-                self.localNode.localConfig.position.CopyFrom(fromRadio.config.position)
-            elif fromRadio.config.HasField("power"):
-                self.localNode.localConfig.power.CopyFrom(fromRadio.config.power)
-            elif fromRadio.config.HasField("network"):
-                self.localNode.localConfig.network.CopyFrom(fromRadio.config.network)
-            elif fromRadio.config.HasField("display"):
-                self.localNode.localConfig.display.CopyFrom(fromRadio.config.display)
-            elif fromRadio.config.HasField("lora"):
-                self.localNode.localConfig.lora.CopyFrom(fromRadio.config.lora)
-            elif fromRadio.config.HasField("bluetooth"):
-                self.localNode.localConfig.bluetooth.CopyFrom(
-                    fromRadio.config.bluetooth
-                )
-
-            elif fromRadio.moduleConfig.HasField("mqtt"):
-                self.localNode.moduleConfig.mqtt.CopyFrom(fromRadio.moduleConfig.mqtt)
-            elif fromRadio.moduleConfig.HasField("serial"):
-                self.localNode.moduleConfig.serial.CopyFrom(
-                    fromRadio.moduleConfig.serial
-                )
-            elif fromRadio.moduleConfig.HasField("external_notification"):
-                self.localNode.moduleConfig.external_notification.CopyFrom(
-                    fromRadio.moduleConfig.external_notification
-                )
-            elif fromRadio.moduleConfig.HasField("store_forward"):
-                self.localNode.moduleConfig.store_forward.CopyFrom(
-                    fromRadio.moduleConfig.store_forward
-                )
-            elif fromRadio.moduleConfig.HasField("range_test"):
-                self.localNode.moduleConfig.range_test.CopyFrom(
-                    fromRadio.moduleConfig.range_test
-                )
-            elif fromRadio.moduleConfig.HasField("telemetry"):
-                self.localNode.moduleConfig.telemetry.CopyFrom(
-                    fromRadio.moduleConfig.telemetry
-                )
-            elif fromRadio.moduleConfig.HasField("canned_message"):
-                self.localNode.moduleConfig.canned_message.CopyFrom(
-                    fromRadio.moduleConfig.canned_message
-                )
-            elif fromRadio.moduleConfig.HasField("audio"):
-                self.localNode.moduleConfig.audio.CopyFrom(fromRadio.moduleConfig.audio)
-            elif fromRadio.moduleConfig.HasField("remote_hardware"):
-                self.localNode.moduleConfig.remote_hardware.CopyFrom(
-                    fromRadio.moduleConfig.remote_hardware
-                )
-            elif fromRadio.moduleConfig.HasField("neighbor_info"):
-                self.localNode.moduleConfig.neighbor_info.CopyFrom(
-                    fromRadio.moduleConfig.neighbor_info
-                )
-            elif fromRadio.moduleConfig.HasField("detection_sensor"):
-                self.localNode.moduleConfig.detection_sensor.CopyFrom(
-                    fromRadio.moduleConfig.detection_sensor
-                )
-            elif fromRadio.moduleConfig.HasField("ambient_lighting"):
-                self.localNode.moduleConfig.ambient_lighting.CopyFrom(
-                    fromRadio.moduleConfig.ambient_lighting
-                )
-            elif fromRadio.moduleConfig.HasField("paxcounter"):
-                self.localNode.moduleConfig.paxcounter.CopyFrom(
-                    fromRadio.moduleConfig.paxcounter
-                )
-
-        else:
-            logging.debug("Unexpected FromRadio payload")
-
-    def _fixupPosition(self, position: Dict) -> Dict:
+    def _fixupPosition(self, position: Optional[Position]) -> Position:
         """Convert integer lat/lon into floats
 
         Arguments:
             position {Position dictionary} -- object to fix up
         Returns the position with the updated keys
         """
-        if "latitudeI" in position:
-            position["latitude"] = position["latitudeI"] * 1e-7
-        if "longitudeI" in position:
-            position["longitude"] = position["longitudeI"] * 1e-7
+        if position.latitude_i is not None:
+            position.latitude = position.latitude_i * 1e-7
+        if position.longitude_i is not None:
+            position.longitude = position.longitude_i * 1e-7
         return position
 
     def _nodeNumToId(self, num):
@@ -1064,7 +944,7 @@ class MeshInterface:
         topic = "meshtastic.receive"  # Generic unknown packet type
 
         decoded = None
-        portnum = portnums_pb2.PortNum.Name(portnums_pb2.PortNum.UNKNOWN_APP)
+        port_number = portnums_pb2.PortNum.Name(portnums_pb2.PortNum.UNKNOWN_APP)
         if "decoded" in asDict:
             decoded = asDict["decoded"]
             # The default MessageToDict converts byte arrays into base64 strings.
@@ -1076,12 +956,12 @@ class MeshInterface:
             # set it will not be populated at all to make API usage easier, set
             # it to prevent confusion
             if "portnum" not in decoded:
-                decoded["portnum"] = portnum
-                logging.warning(f"portnum was not in decoded. Setting to:{portnum}")
+                decoded["portnum"] = port_number
+                logging.warning(f"portnum was not in decoded. Setting to:{port_number}")
             else:
-                portnum = decoded["portnum"]
+                port_number = decoded["portnum"]
 
-            topic = f"meshtastic.receive.data.{portnum}"
+            topic = f"meshtastic.receive.data.{port_number}"
 
             # decode position protobufs and update nodedb, provide decoded version
             # as "position" in the published msg move the following into a 'decoders'

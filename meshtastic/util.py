@@ -17,14 +17,15 @@ from google.protobuf.json_format import MessageToJson
 
 import packaging.version as pkg_version
 import requests
-import serial # type: ignore[import-untyped]
-import serial.tools.list_ports # type: ignore[import-untyped]
+import serial  # type: ignore[import-untyped]
+import serial.tools.list_ports  # type: ignore[import-untyped]
 
-from meshtastic.supported_device import supported_devices
-from meshtastic.version import get_active_version
+from .supported_device import supported_devices
+from .version import get_active_version
 
 """Some devices such as a seger jlink we never want to accidentally open"""
 blacklistVids = dict.fromkeys([0x1366])
+
 
 def quoteBooleans(a_string):
     """Quote booleans
@@ -148,14 +149,14 @@ class dotdict(dict):
     """dot.notation access to dictionary attributes"""
 
     __getattr__ = dict.get
-    __setattr__ = dict.__setitem__ # type: ignore[assignment]
-    __delattr__ = dict.__delitem__ # type: ignore[assignment]
+    __setattr__ = dict.__setitem__  # type: ignore[assignment]
+    __delattr__ = dict.__delitem__  # type: ignore[assignment]
 
 
 class Timeout:
     """Timeout class"""
 
-    def __init__(self, maxSecs: int=20):
+    def __init__(self, maxSecs: int = 20):
         self.expireTime: Union[int, float] = 0
         self.sleepInterval: float = 0.1
         self.expireTimeout: int = maxSecs
@@ -216,8 +217,9 @@ class Timeout:
             time.sleep(self.sleepInterval)
         return False
 
+
 class Acknowledgment:
-    "A class that records which type of acknowledgment was just received, if any."
+    """ A class that records which type of acknowledgment was just received, if any."""
 
     def __init__(self):
         """initialize"""

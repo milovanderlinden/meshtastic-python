@@ -6,17 +6,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from .. import localonly_pb2, config_pb2
-from ..channel_pb2 import Channel # pylint: disable=E0611
-from ..node import Node
-from ..serial_interface import SerialInterface
-from ..mesh_interface import MeshInterface
-
-# from ..config_pb2 import Config
-# from ..cannedmessages_pb2 import (CannedMessagePluginMessagePart1, CannedMessagePluginMessagePart2,
-#                                  CannedMessagePluginMessagePart3, CannedMessagePluginMessagePart4,
-#                                  CannedMessagePluginMessagePart5)
-# from ..util import Timeout
+from meshtastic import localonly_pb2, config_pb2
+from meshtastic.channel_pb2 import Channel
+from meshtastic.mesh_interface import MeshInterface
+from meshtastic.node import Node
+from meshtastic.serial_interface import SerialInterface
 
 
 @pytest.mark.unit

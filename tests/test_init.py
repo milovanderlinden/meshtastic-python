@@ -6,9 +6,9 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from meshtastic import _onNodeInfoReceive, _onPositionReceive, _onTextReceive, mt_config
-
-from ..serial_interface import SerialInterface
+from meshtastic import mt_config
+from meshtastic.known_protocol import _onTextReceive, _onPositionReceive, _onNodeInfoReceive
+from meshtastic.serial_interface import SerialInterface
 
 
 @pytest.mark.unit

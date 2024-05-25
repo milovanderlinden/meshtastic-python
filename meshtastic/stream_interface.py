@@ -5,10 +5,10 @@ import threading
 import time
 import traceback
 
-import serial # type: ignore[import-untyped]
+import serial  # type: ignore[import-untyped]
 
-from meshtastic.mesh_interface import MeshInterface
-from meshtastic.util import is_windows11, stripnl
+from .mesh_interface import MeshInterface
+from .util import is_windows11, stripnl
 
 START1 = 0x94
 START2 = 0xC3
@@ -17,7 +17,7 @@ MAX_TO_FROM_RADIO_SIZE = 512
 
 
 class StreamInterface(MeshInterface):
-    """Interface class for meshtastic devices over a stream link (serial, TCP, etc)"""
+    """Interface class for meshtastic devices over a stream link (serial, TCP, etc.)"""
 
     def __init__(self, debugOut=None, noProto=False, connectNow=True):
         """Constructor, opens a connection to self.stream
@@ -165,7 +165,7 @@ class StreamInterface(MeshInterface):
                         ):  # we _just_ finished reading the header, validate length
                             if packetlen > MAX_TO_FROM_RADIO_SIZE:
                                 self._rxBuf = (
-                                    empty  # length was out out bounds, restart
+                                    empty  # length was out of bounds, restart
                                 )
 
                         if len(self._rxBuf) != 0 and ptr + 1 >= packetlen + HEADER_LEN:

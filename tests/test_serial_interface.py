@@ -5,8 +5,8 @@ from unittest.mock import mock_open, patch
 
 import pytest
 
-from ..serial_interface import SerialInterface
-from .. import config_pb2
+from meshtastic import config_pb2
+from meshtastic.serial_interface import SerialInterface
 
 
 @pytest.mark.unit

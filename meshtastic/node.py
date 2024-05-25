@@ -7,8 +7,8 @@ import time
 
 from typing import Union
 
-from meshtastic import admin_pb2, apponly_pb2, channel_pb2, localonly_pb2, portnums_pb2
-from meshtastic.util import (
+from . import admin_pb2, apponly_pb2, channel_pb2, localonly_pb2, portnums_pb2
+from .util import (
     Timeout,
     camel_to_snake,
     fromPSK,
@@ -43,7 +43,7 @@ class Node:
         self.gotResponse = None
 
     def showChannels(self):
-        """Show human readable description of our channels."""
+        """Show human-readable description of our channels."""
         print("Channels:")
         if self.channels:
             logging.debug(f"self.channels:{self.channels}")
@@ -61,7 +61,7 @@ class Node:
             print(f"Complete URL (includes all channels): {adminURL}")
 
     def showInfo(self):
-        """Show human readable description of our node"""
+        """Show human-readable description of our node"""
         prefs = ""
         if self.localConfig:
             prefs = message_to_json(self.localConfig, multiline=True)
