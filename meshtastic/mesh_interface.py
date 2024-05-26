@@ -117,8 +117,8 @@ class MeshInterface:
         """Show human-readable summary about this object"""
         _node_info = self.getMyNodeInfo()
         _owner = f"Owner: {_node_info.user.long_name} ({_node_info.user.short_name})"
-        _info = f"\nMy info: {_node_info.model_dump_json(by_alias=True, exclude_none=True, exclude={'user'})}"
-        _metadata = f"\nMetadata: {self.metadata.model_dump_json(by_alias=True, exclude_none=True)}"
+        _info = f"\nMy info: {_node_info.model_dump_json(by_alias=False, exclude_none=True, exclude={'user'})}"
+        _metadata = f"\nMetadata: {self.metadata.model_dump_json(by_alias=False, exclude_none=True)}"
         _mesh = "\n\nNodes in mesh: "
         nodes = {}
         if self.nodes:
@@ -128,7 +128,7 @@ class MeshInterface:
                     nodes[n.user.id] = n
 
         info = _owner + _info + _metadata + _mesh + json.dumps(
-            [value.model_dump(by_alias=True, exclude_none=True) for key, value in nodes.items()],
+            [value.model_dump(by_alias=False, exclude_none=True) for key, value in nodes.items()],
             indent=2,
             default=str
         )
