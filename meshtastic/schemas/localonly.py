@@ -8,7 +8,7 @@ from .module_config import ModuleConfig
 
 class LocalConfig(BaseModel):
     """
-    module: localonly.proto
+    proto source: localonly.proto
     message: LocalConfig
     """
     device: Optional[Config.DeviceConfig] = Field(default=None)
@@ -23,7 +23,7 @@ class LocalConfig(BaseModel):
 
 class LocalModuleConfig(BaseModel):
     """
-    module: localonly.proto
+    proto source: localonly.proto
     message: LocalModuleConfig
     """
     mqtt: Optional[ModuleConfig.MQTTConfig] = Field(default=None)

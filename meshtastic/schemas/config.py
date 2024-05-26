@@ -4,67 +4,68 @@ from typing import Optional, List
 from pydantic import BaseModel, Field, ConfigDict, ValidationError
 
 
+class DeviceConfig(BaseModel):
+    """
+    proto source: config.proto
+    message: Config.DeviceConfig
+    """
+
+    class Role(str, Enum):
+        """
+        proto source: config.proto
+        enum: Config.DeviceConfig.Role
+        """
+        CLIENT = 'CLIENT'
+        CLIENT_MUTE = 'CLIENT_MUTE'
+        ROUTER = 'ROUTER'
+        ROUTER_CLIENT = 'ROUTER_CLIENT'
+        REPEATER = 'REPEATER'
+        TRACKER = 'TRACKER'
+        SENSOR = 'SENSOR'
+        TAK = 'TAK'
+        CLIENT_HIDDEN = 'CLIENT_HIDDEN'
+        LOST_AND_FOUND = 'LOST_AND_FOUND'
+        TAK_TRACKER = 'TAK_TRACKER'
+
+    class RebroadcastMode(str, Enum):
+        """
+        proto source: config.proto
+        enum: DeviceConfig.RebroadcastMode
+        """
+        ALL = 'ALL'
+        ALL_SKIP_DECODING = 'ALL_SKIP_DECODING'
+        LOCAL_ONLY = 'LOCAL_ONLY'
+        KNOWN_ONLY = 'KNOWN_ONLY'
+
+    role: Optional[Role] = Field(default=None)
+    serial_enabled: Optional[bool] = Field(default=None, alias="serialEnabled")
+    debug_log_enabled: Optional[bool] = Field(default=None)
+    button_gpio: Optional[int] = Field(default=None)
+    buzzer_gpio: Optional[int] = Field(default=None)
+    rebroadcast_mode: Optional[RebroadcastMode] = Field(default=None)
+    node_info_broadcast_secs: Optional[int] = Field(default=None, alias="nodeInfoBroadcastSecs")
+    double_tap_as_button_press: Optional[bool] = Field(default=None)
+    is_managed: Optional[bool] = Field(default=None)
+    disable_triple_click: Optional[bool] = Field(default=None)
+    tzdef: Optional[int] = Field(default=None)
+    led_heartbeat_disabled: Optional[bool] = Field(default=None)
+
+
 class Config(BaseModel):
     """
-    module: config.proto
+    proto source: config.proto
     message: Config
     """
 
-    class DeviceConfig(BaseModel):
-        """
-        module: config.proto
-        message: Config.DeviceConfig
-        """
-
-        class Role(IntEnum):
-            """
-            module: config.proto
-            enum: Config.DeviceConfig.Role
-            """
-            CLIENT = 0
-            CLIENT_MUTE = 1
-            ROUTER = 2
-            ROUTER_CLIENT = 3
-            REPEATER = 4
-            TRACKER = 5
-            SENSOR = 6
-            TAK = 7
-            CLIENT_HIDDEN = 8
-            LOST_AND_FOUND = 9
-            TAK_TRACKER = 10
-
-        class RebroadcastMode(IntEnum):
-            """
-            module: config.proto
-            enum: Config.DeviceConfig.RebroadcastMode
-            """
-            ALL = 0
-            ALL_SKIP_DECODING = 1
-            LOCAL_ONLY = 2
-            KNOWN_ONLY = 3
-
-        role: Optional[Role] = Field(default=None)
-        serial_enabled: Optional[bool] = Field(default=None, alias="serialEnabled")
-        debug_log_enabled: Optional[bool] = Field(default=None)
-        button_gpio: Optional[int] = Field(default=None)
-        buzzer_gpio: Optional[int] = Field(default=None)
-        rebroadcast_mode: Optional[RebroadcastMode] = Field(default=None)
-        node_info_broadcast_secs: Optional[int] = Field(default=None, alias="nodeInfoBroadcastSecs")
-        double_tap_as_button_press: Optional[bool] = Field(default=None)
-        is_managed: Optional[bool] = Field(default=None)
-        disable_triple_click: Optional[bool] = Field(default=None)
-        tzdef: Optional[int] = Field(default=None)
-        led_heartbeat_disabled: Optional[bool] = Field(default=None)
-
     class PositionConfig(BaseModel):
         """
-        module: config.proto
+        proto source: config.proto
         message: Config.PositionConfig
         """
 
         class PositionFlags(Enum):
             """
-            module: config.proto
+            proto source: config.proto
             enum: Config.PositionConfig.PositionFlag
             """
             UNSET = 0x0000
@@ -81,7 +82,7 @@ class Config(BaseModel):
 
         class GpsMode(IntEnum):
             """
-            module: config.proto
+            proto source: config.proto
             enum: Config.PositionConfig.GpsMode
             """
             DISABLED = 0
@@ -108,7 +109,7 @@ class Config(BaseModel):
 
     class PowerConfig(BaseModel):
         """
-        module: config.proto
+        proto source: config.proto
         message: Config.PowerConfig
         """
         is_power_saving: Optional[bool] = Field(default=None)
@@ -122,12 +123,12 @@ class Config(BaseModel):
 
     class NetworkConfig(BaseModel):
         """
-        module: config.proto
+        proto source: config.proto
         message: Config.NetworkConfig
         """
         class AddressMode(IntEnum):
             """
-            module: config.proto
+            proto source: config.proto
             enum: Config.NetworkConfig.AdressMode
             """
             DHCP = 0
@@ -135,7 +136,7 @@ class Config(BaseModel):
 
         class IpV4Config(BaseModel):
             """
-            module: config.proto
+            proto source: config.proto
             message: Config.NetworkConfig.IpV4Config
             """
             ip: Optional[int] = Field(default=None)
@@ -154,12 +155,12 @@ class Config(BaseModel):
 
     class DisplayConfig(BaseModel):
         """
-        module: config.proto
+        proto source: config.proto
         message: Config.DisplayConfig
         """
         class GpsCoordinateFormat(IntEnum):
             """
-            module: config.proto
+            proto source: config.proto
             enum: Config.DisplayConfig.GpsCoordinateFormat
             """
             DEC = 0
@@ -171,7 +172,7 @@ class Config(BaseModel):
 
         class DisplayUnits(IntEnum):
             """
-            module: config.proto
+            proto source: config.proto
             enum: Config.DisplayConfig.DisplayUnits
             """
             METRIC = 0
@@ -179,7 +180,7 @@ class Config(BaseModel):
 
         class OledType(IntEnum):
             """
-            module: config.proto
+            proto source: config.proto
             enum: Config.DisplayConfig.OledType
             """
             OLED_AUTO = 0
@@ -189,7 +190,7 @@ class Config(BaseModel):
 
         class DisplayMode(IntEnum):
             """
-            module: config.proto
+            proto source: config.proto
             enum: Config.DisplayConfig.DisplayMode
             """
             DEFAULT = 0
@@ -210,12 +211,12 @@ class Config(BaseModel):
 
     class LoRaConfig(BaseModel):
         """
-        module: config.proto
+        proto source: config.proto
         message: Config.LoRaConfig
         """
         class RegionCode(IntEnum):
             """
-            module: config.proto
+            proto source: config.proto
             enum: Config.LoRaConfig.RegionCode
             """
             UNSET = 0
@@ -240,7 +241,7 @@ class Config(BaseModel):
 
         class ModemPreset(IntEnum):
             """
-            module: config.proto
+            proto source: config.proto
             enum: Config.LoRaConfig.ModemPreset
             """
             LONG_FAST = 0
@@ -271,12 +272,12 @@ class Config(BaseModel):
 
     class BluetoothConfig(BaseModel):
         """
-        module: config.proto
+        proto source: config.proto
         message: Config.BluetoothConfig
         """
         class PairingMode(IntEnum):
             """
-            module: config.proto
+            proto source: config.proto
             enum: Config.BluetoothConfig.PairingMode
             """
             RANDOM_PIN = 0

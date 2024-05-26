@@ -1,26 +1,42 @@
+from datetime import datetime
 from enum import IntEnum
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from .channel import Channel
 from .localonly import LocalConfig, LocalModuleConfig
+from .mesh import Position, User, DeviceMetrics, MyNodeInfo, MeshPacket, NodeRemoteHardwarePin
 
 
 class PositionLite(BaseModel):
     """
-    module: deviceonly.proto
+    proto source: deviceonly.proto
     message: PositionLite
     """
-    latitude_i: Optional[int] = Field(default=None)
-    longitude_i: Optional[int] = Field(default=None)
+    latitude: Optional[float] = Field(default=None)
+    longitude: Optional[float] = Field(default=None)
     altitude: Optional[int] = Field(default=None)
-    time: Optional[int] = Field(default=None)
+    time: Optional[datetime] = Field(default=None)
     location_source: Optional[Position.LocSource] = Field(default=None)
 
+    @model_validator(mode='before')
+    @classmethod
+    def i_preprocess_validator(cls, values: Dict[str, Any]):
+        """
+        The model validator allows to set longitude, latitude to floats
+        and time to a datetime object
+        """
+        if "longitudeI" in values:
+            values['longitude'] = values['longitudeI'] * 1e-7
+        if "latitudeI" in values:
+            values['latitude'] = values['latitudeI'] * 1e-7
+        if "time" in values:
+            values['time'] = datetime.fromtimestamp(values["time"])
+        return values
 
 class NodeInfoLite(BaseModel):
     """
-    module: deviceonly.proto
+    proto source: deviceonly.proto
     message: NodeInfoLite
     """
     num: Optional[int] = Field(default=None)
@@ -37,7 +53,7 @@ class NodeInfoLite(BaseModel):
 
 class ScreenFonts(IntEnum):
     """
-    module: deviceonly.proto
+    proto source: deviceonly.proto
     enum: ScreenFonts
     """
     FONT_SMALL = 0
@@ -47,7 +63,7 @@ class ScreenFonts(IntEnum):
 
 class DeviceState(BaseModel):
     """
-    module: deviceonly.proto
+    proto source: deviceonly.proto
     message: DeviceState
     """
     my_node: Optional[MyNodeInfo] = Field(default=None)
@@ -64,7 +80,7 @@ class DeviceState(BaseModel):
 
 class ChannelFile(BaseModel):
     """
-    module: deviceonly.proto
+    proto source: deviceonly.proto
     message: ChannelFile
     """
     channels: Optional[List[Channel]] = Field(default=None)
@@ -73,7 +89,7 @@ class ChannelFile(BaseModel):
 
 class OEMStore(BaseModel):
     """
-    module: deviceonly.proto
+    proto source: deviceonly.proto
     message: OEMStore
     """
     oem_icon_width: Optional[int] = Field(default=None)

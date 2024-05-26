@@ -7,7 +7,7 @@ from .localonly import LocalConfig, LocalModuleConfig
 
 class DeviceProfile(BaseModel):
     """
-    module: clientonly.proto
+    proto source: clientonly.proto
     message: DeviceProfile
     """
     long_name: Optional[str] = Field(default=None)

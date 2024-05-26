@@ -4,21 +4,41 @@ from typing import Optional, List
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 
+class RemoteHardwarePin(BaseModel):
+    """
+    proto source: module_config.proto
+    message: RemoteHardwarePin
+    """
+
+    class RemoteHardwarePinType(IntEnum):
+        """
+        proto source: module_config.proto
+        enum: emoteHardwarePin.RemoteHardwarePinType
+        """
+        UNKNOWN = 0
+        DIGITAL_READ = 1
+        DIGITAL_WRITE = 2
+
+    gpio_pin: Optional[int] = Field(default=None)
+    name: Optional[int] = Field(default=None)
+    type: Optional[RemoteHardwarePinType] = Field(default=None)
+
+
 class ModuleConfig(BaseModel):
     """
-    module: module_config.proto
+    proto source: module_config.proto
     message: ModuleConfig
     """
 
     class MQTTConfig(BaseModel):
         """
-        module: module_config.proto
+        proto source: module_config.proto
         message: ModuleConfig.MQTTConfig
         """
 
         class MapReportSettings(BaseModel):
             """
-            module: module_config.proto
+            proto source: module_config.proto
             message: ModuleConfig.MQTTConfig.MapReportSettings
             """
             publish_interval_secs: Optional[int] = Field(default=None)
@@ -41,28 +61,9 @@ class ModuleConfig(BaseModel):
 
     class RemoteHardwareConfig(BaseModel):
         """
-        module: module_config.proto
+        proto source: module_config.proto
         message: ModuleConfig.RemoteHardwareConfig
         """
-
-        class RemoteHardwarePin(BaseModel):
-            """
-            module: module_config.proto
-            message: ModuleConfig.RemoteHardwareConfig.RemoteHardwarePin
-            """
-
-            class RemoteHardwarePinType(IntEnum):
-                """
-                module: module_config.proto
-                enum: ModuleConfig.RemoteHardwareConfig.RemoteHardwarePin.RemoteHardwarePinType
-                """
-                UNKNOWN = 0
-                DIGITAL_READ = 1
-                DIGITAL_WRITE = 2
-
-            gpio_pin: Optional[int] = Field(default=None)
-            name: Optional[int] = Field(default=None)
-            type: Optional[RemoteHardwarePinType] = Field(default=None)
 
         enabled: Optional[bool] = Field(default=None)
         allow_undefined_pin_access: Optional[bool] = Field(default=None)
@@ -70,7 +71,7 @@ class ModuleConfig(BaseModel):
 
     class NeighborInfoConfig(BaseModel):
         """
-        module: module_config.proto
+        proto source: module_config.proto
         message: NeighborInfoConfig
         """
         enabled: Optional[bool] = Field(default=None)
@@ -78,7 +79,7 @@ class ModuleConfig(BaseModel):
 
     class DetectionSensorConfig(BaseModel):
         """
-        module: module_config.proto
+        proto source: module_config.proto
         message: DetectionSensorConfig
         """
         enabled: Optional[bool] = Field(default=None)
@@ -92,7 +93,7 @@ class ModuleConfig(BaseModel):
 
     class AudioConfig(BaseModel):
         """
-        module: module_config.proto
+        proto source: module_config.proto
         message: AudioConfig
         """
         class Audio_Baud(IntEnum):
@@ -116,7 +117,7 @@ class ModuleConfig(BaseModel):
 
     class PaxcounterConfig(BaseModel):
         """
-        module: module_config.proto
+        proto source: module_config.proto
         message: PaxcounterConfig
         """
         enabled: Optional[bool] = Field(default=None)
@@ -126,7 +127,7 @@ class ModuleConfig(BaseModel):
 
     class SerialConfig(BaseModel):
         """
-        module: module_config.proto
+        proto source: module_config.proto
         message: SerialConfig
         """
         class Serial_Baud(IntEnum):
@@ -167,7 +168,7 @@ class ModuleConfig(BaseModel):
 
     class ExternalNotificationConfig(BaseModel):
         """
-        module: module_config.proto
+        proto source: module_config.proto
         message: ExternalNotificationConfig
         """
         enabled: Optional[bool] = Field(default=None)
@@ -188,7 +189,7 @@ class ModuleConfig(BaseModel):
 
     class StoreForwardConfig(BaseModel):
         """
-        module: module_config.proto
+        proto source: module_config.proto
         message: StoreForwardConfig
         """
         enabled: Optional[bool] = Field(default=None)
@@ -199,7 +200,7 @@ class ModuleConfig(BaseModel):
 
     class RangeTestConfig(BaseModel):
         """
-        module: module_config.proto
+        proto source: module_config.proto
         message: RangeTestConfig
         """
         enabled: Optional[bool] = Field(default=None)
@@ -208,7 +209,7 @@ class ModuleConfig(BaseModel):
 
     class TelemetryConfig(BaseModel):
         """
-        module: module_config.proto
+        proto source: module_config.proto
         message: TelemetryConfig
         """
         device_update_interval: Optional[int] = Field(default=None, alias="deviceUpdateInterval")
@@ -224,7 +225,7 @@ class ModuleConfig(BaseModel):
 
     class CannedMessageConfig(BaseModel):
         """
-        module: module_config.proto
+        proto source: module_config.proto
         message: CannedMessageConfig
         """
         class InputEventChar(IntEnum):
@@ -250,7 +251,7 @@ class ModuleConfig(BaseModel):
 
     class AmbientLightingConfig(BaseModel):
         """
-        module: module_config.proto
+        proto source: module_config.proto
         message: AmbientLightingConfig
         """
         led_state: Optional[bool] = Field(default=None)

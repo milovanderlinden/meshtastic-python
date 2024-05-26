@@ -27,7 +27,8 @@ from . import (
 from .constants import BROADCAST_ADDR, LOCAL_ADDR, BROADCAST_NUM, publishingThread
 from .known_protocol import protocols
 from .response_handler import ResponseHandler
-from .schemas import User, Info, Metadata, NodeInfo, Channel, Config, ModuleConfig, Position
+from .schemas.mesh import NodeInfo, Channel, Config, ModuleConfig, Position, MyNodeInfo, DeviceMetadata
+
 from .util import (
     Acknowledgment,
     Timeout,
@@ -48,8 +49,8 @@ class MeshInterface:
     nodes
     debugOut
     """
-    my_info: Info = None  # We don't have device info yet
-    metadata: Metadata = Metadata()  # Metadata object
+    my_info: MyNodeInfo = None  # We don't have device info yet
+    metadata: DeviceMetadata = DeviceMetadata()  # Metadata object
     nodes: Dict[str, NodeInfo] = {}
     nodesByNum: Dict[int, NodeInfo] = {}
     channels: List[Channel] = [Channel()] * 8  # 8 empty channel definitions
@@ -532,7 +533,7 @@ class MeshInterface:
         """
 
         # We allow users to talk to the local node before we've completed the full connection flow...
-        if self.my_info is not None and destinationId != self.my_info.node_number:
+        if self.my_info is not None and destinationId != self.my_info.my_node_num:
             self._waitConnected()
 
         toRadio = mesh_pb2.ToRadio()
@@ -546,7 +547,7 @@ class MeshInterface:
             nodeNum = BROADCAST_NUM
         elif destinationId == LOCAL_ADDR:
             if self.my_info:
-                nodeNum = self.my_info.node_number
+                nodeNum = self.my_info.my_node_num
             else:
                 our_exit("Warning: No my_info found.")
         # A simple hex style nodeid - we can parse this without needing the DB
@@ -621,7 +622,7 @@ class MeshInterface:
         if self.my_info is None or self.nodesByNum is None:
             return None
         logging.debug(f"self.nodesByNum:{self.nodesByNum}")
-        return self.nodesByNum.get(self.my_info.node_number)
+        return self.nodesByNum.get(self.my_info.my_node_num)
 
     def _waitConnected(self, timeout=30.0):
         """Block until the initial node db download is complete, or timeout
@@ -802,12 +803,12 @@ class MeshInterface:
         _message = google.protobuf.json_format.MessageToDict(_from_radio)
 
         if "myInfo" in _message:
-            self.my_info = Info(**_message["myInfo"])
-            self.localNode.nodeNum = self.my_info.node_number
+            self.my_info = MyNodeInfo(**_message["myInfo"])
+            self.localNode.nodeNum = self.my_info.my_node_num
             logging.debug(f"Received myinfo: {stripnl(_from_radio.my_info)}")
 
         elif "metadata" in _message:
-            self.metadata = Metadata(**_message["metadata"])
+            self.metadata = DeviceMetadata(**_message["metadata"])
             logging.debug(f"Received device metadata: {stripnl(_from_radio.metadata)}")
 
         elif "nodeInfo" in _message:

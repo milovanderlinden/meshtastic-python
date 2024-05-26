@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 
 class CannedMessageModuleConfig(BaseModel):
     """
-    module: cannedmessages.proto
+    proto source: cannedmessages.proto
     message: CannedMessageModuleConfig
 
     Predefined messages for canned message module separated by '|' characters.

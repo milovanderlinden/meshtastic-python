@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 
 class SerialConnectionStatus(BaseModel):
     """
-    module: connection_status.proto
+    proto source: connection_status.proto
     message: SerialConnectionStatus
     """
     baud: Optional[int] = Field(default=None)
@@ -14,7 +14,7 @@ class SerialConnectionStatus(BaseModel):
 
 class BluetoothConnectionStatus(BaseModel):
     """
-    module: connection_status.proto
+    proto source: connection_status.proto
     message: BluetoothConnectionStatus
     """
     pin: Optional[int] = Field(default=None)
@@ -24,7 +24,7 @@ class BluetoothConnectionStatus(BaseModel):
 
 class NetworkConnectionStatus(BaseModel):
     """
-    module: connection_status.proto
+    proto source: connection_status.proto
     message: NetworkConnectionStatus
     """
     ip_address: Optional[int] = Field(default=None)
@@ -35,7 +35,7 @@ class NetworkConnectionStatus(BaseModel):
 
 class EthernetConnectionStatus(BaseModel):
     """
-    module: connection_status.proto
+    proto source: connection_status.proto
     message: EthernetConnectionStatus
     """
     status: Optional[NetworkConnectionStatus] = Field(default=None)
@@ -43,7 +43,7 @@ class EthernetConnectionStatus(BaseModel):
 
 class WifiConnectionStatus(BaseModel):
     """
-    module: connection_status.proto
+    proto source: connection_status.proto
     message: WifiConnectionStatus
     """
     status: Optional[NetworkConnectionStatus] = Field(default=None)
@@ -53,7 +53,7 @@ class WifiConnectionStatus(BaseModel):
 
 class DeviceConnectionStatus(BaseModel):
     """
-    module: connection_status.proto
+    proto source: connection_status.proto
     message: DeviceConnectionStatus
     """
     # payload

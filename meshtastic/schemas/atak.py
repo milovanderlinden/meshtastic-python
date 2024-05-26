@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 
 class PLI(BaseModel):
     """
-    module: atak.proto
+    proto source: atak.proto
     enum: Contact
     """
     latitude_i: Optional[int] = Field(default=None)
@@ -18,7 +18,7 @@ class PLI(BaseModel):
 
 class Contact(BaseModel):
     """
-    module: atak.proto
+    proto source: atak.proto
     enum: Contact
     """
     callsign: Optional[str] = Field(default=None)
@@ -27,7 +27,7 @@ class Contact(BaseModel):
 
 class Status(BaseModel):
     """
-    module: atak.proto
+    proto source: atak.proto
     enum: Status
     """
     battery: Optional[int] = Field(default=None)
@@ -35,7 +35,7 @@ class Status(BaseModel):
 
 class MemberRole(IntEnum):
     """
-    module: atak.proto
+    proto source: atak.proto
     enum: MemberRole
     """
     Unspecifed = 0  # Typo is in proto
@@ -51,7 +51,7 @@ class MemberRole(IntEnum):
 
 class Team(IntEnum):
     """
-    module: atak.proto
+    proto source: atak.proto
     enum: Team
     """
     Unspecifed_Color = 0  # Typo is in proto
@@ -73,7 +73,7 @@ class Team(IntEnum):
 
 class Group(BaseModel):
     """
-    module: atak.proto
+    proto source: atak.proto
     message: Group
     """
     role: Optional[MemberRole] = Field(default=None)
@@ -82,7 +82,7 @@ class Group(BaseModel):
 
 class GeoChat(BaseModel):
     """
-    module: atak.proto
+    proto source: atak.proto
     message: GeoChat
     """
     message: Optional[str] = Field(default=None)
@@ -91,7 +91,7 @@ class GeoChat(BaseModel):
 
 class TAKPacket(BaseModel):
     """
-    module: atak.proto
+    proto source: atak.proto
     message: TAKPacket
     """
     is_compressed: Optional[bool] = Field(default=None)

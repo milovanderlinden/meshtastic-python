@@ -1,17 +1,22 @@
-from enum import IntEnum
+from enum import Enum
 from typing import Optional, List
 
 from pydantic import BaseModel, Field
 
 from .channel import Channel
 from .config import Config
+from .mesh import User, Position, NodeRemoteHardwarePin, DeviceMetadata
 from .module_config import ModuleConfig
+from .connection_status import DeviceConnectionStatus
 
 
 class HamParameters(BaseModel):
     """
-    module: admin.proto
+    # proto source: admin.proto
     message: HamParameters
+
+    https://github.com/meshtastic/protobufs/blob/master/meshtastic/admin.proto#L351
+
     """
     call_sign: Optional[str] = Field(default=None)
     tx_power: Optional[int] = Field(default=None)
@@ -21,40 +26,44 @@ class HamParameters(BaseModel):
 
 class NodeRemoteHardwarePinsResponse(BaseModel):
     """
-    module: admin.proto
+    proto source: admin.proto
     message: NodeRemoteHardwarePinsResponse
+
+    https://github.com/meshtastic/protobufs/blob/master/meshtastic/admin.proto#L231
     """
     node_remote_hardware_pins: Optional[List[NodeRemoteHardwarePin]] = Field(default=None)
 
 
 class AdminMessage(BaseModel):
     """
-    module: admin.proto
+    proto source: admin.proto
     message: AdminMessage
-    """
-    class ConfigType(IntEnum):
-        DEVICE_CONFIG = 0
-        POSITION_CONFIG = 1
-        POWER_CONFIG = 2
-        NETWORK_CONFIG = 3
-        DISPLAY_CONFIG = 4
-        LORA_CONFIG = 5
-        BLUETOOTH_CONFIG = 6
 
-    class ModuleConfigType(IntEnum):
-        MQTT_CONFIG = 0
-        SERIAL_CONFIG = 1
-        EXTNOTIF_CONFIG = 2
-        STOREFORWARD_CONFIG = 3
-        RANGETEST_CONFIG = 4
-        TELEMETRY_CONFIG = 5
-        CANNEDMSG_CONFIG = 6
-        AUDIO_CONFIG = 7
-        REMOTEHARDWARE_CONFIG = 8
-        NEIGHBORINFO_CONFIG = 9
-        AMBIENTLIGHTING_CONFIG = 10
-        DETECTIONSENSOR_CONFIG = 11
-        PAXCOUNTER_CONFIG = 12
+    https://github.com/meshtastic/protobufs/blob/master/meshtastic/admin.proto#L22
+    """
+    class ConfigType(str, Enum):
+        DEVICE_CONFIG = 'DEVICE_CONFIG'
+        POSITION_CONFIG = 'POSITION_CONFIG'
+        POWER_CONFIG = 'POWER_CONFIG'
+        NETWORK_CONFIG = 'NETWORK_CONFIG'
+        DISPLAY_CONFIG = 'DISPLAY_CONFIG'
+        LORA_CONFIG = 'LORA_CONFIG'
+        BLUETOOTH_CONFIG = 'BLUETOOTH_CONFIG'
+
+    class ModuleConfigType(str, Enum):
+        MQTT_CONFIG = 'MQTT_CONFIG'
+        SERIAL_CONFIG = 'SERIAL_CONFIG'
+        EXTNOTIF_CONFIG = 'EXTNOTIF_CONFIG'
+        STOREFORWARD_CONFIG = 'STOREFORWARD_CONFIG'
+        RANGETEST_CONFIG = 'RANGETEST_CONFIG'
+        TELEMETRY_CONFIG = 'TELEMETRY_CONFIG'
+        CANNEDMSG_CONFIG = 'CANNEDMSG_CONFIG'
+        AUDIO_CONFIG = 'AUDIO_CONFIG'
+        REMOTEHARDWARE_CONFIG = 'REMOTEHARDWARE_CONFIG'
+        NEIGHBORINFO_CONFIG = 'NEIGHBORINFO_CONFIG'
+        AMBIENTLIGHTING_CONFIG = 'AMBIENTLIGHTING_CONFIG'
+        DETECTIONSENSOR_CONFIG = 'DETECTIONSENSOR_CONFIG'
+        PAXCOUNTER_CONFIG = 'PAXCOUNTER_CONFIG'
 
     get_channel_request: Optional[int] = Field(default=None)
     get_channel_response: Optional[Channel] = Field(default=None)

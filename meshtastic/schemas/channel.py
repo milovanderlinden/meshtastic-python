@@ -1,4 +1,4 @@
-from enum import IntEnum
+from enum import Enum
 from typing import Optional
 
 from pydantic import BaseModel, Field
@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 
 class ModuleSettings(BaseModel):
     """
-    module: channel.proto
+    proto source: channel.proto
     message: ModuleSettings
     """
     position_precision: Optional[int] = Field(default=None, alias="positionPrecision")
@@ -15,7 +15,7 @@ class ModuleSettings(BaseModel):
 
 class ChannelSettings(BaseModel):
     """
-    module: channel.proto
+    proto source: channel.proto
     message: ChannelSettings
     """
 
@@ -31,13 +31,13 @@ class ChannelSettings(BaseModel):
 
 class Channel(BaseModel):
     """
-    module: channel.proto
+    proto source: channel.proto
     message: Channel
     """
-    class Role(IntEnum):
-        DISABLED = 0
-        PRIMARY = 1
-        SECONDARY = 2
+    class Role(str, Enum):
+        DISABLED = 'DISABLED'
+        PRIMARY = 'PRIMARY'
+        SECONDARY = 'SECONDARY'
 
     # payload
     index: Optional[int] = Field(default=0)

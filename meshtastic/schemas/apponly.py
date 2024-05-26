@@ -8,7 +8,7 @@ from .config import Config
 
 class ChannelSet(BaseModel):
     """
-    module: apponly.proto
+    proto source: apponly.proto
     message: ChannelSet
     """
     settings: Optional[List[ChannelSettings]] = Field(default=None)
