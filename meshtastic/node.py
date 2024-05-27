@@ -42,24 +42,6 @@ class Node:
 
         self.gotResponse = None
 
-    def showChannels(self):
-        """Show human-readable description of our channels."""
-        print("Channels:")
-        if self.channels:
-            logging.debug(f"self.channels:{self.channels}")
-            for c in self.channels:
-                cStr = message_to_json(c.settings)
-                # don't show disabled channels
-                if channel_pb2.Channel.Role.Name(c.role) != "DISABLED":
-                    print(
-                        f"  Index {c.index}: {channel_pb2.Channel.Role.Name(c.role)} psk={pskToString(c.settings.psk)} {cStr}"
-                    )
-        publicURL = self.getURL(includeAll=False)
-        adminURL = self.getURL(includeAll=True)
-        print(f"\nPrimary channel URL: {publicURL}")
-        if adminURL != publicURL:
-            print(f"Complete URL (includes all channels): {adminURL}")
-
     def showInfo(self):
         """Show human-readable description of our node"""
         prefs = ""
@@ -70,7 +52,6 @@ class Node:
         if self.moduleConfig:
             prefs = message_to_json(self.moduleConfig, multiline=True)
         print(f"Module preferences: {prefs}\n")
-        self.showChannels()
 
     def setChannels(self, channels):
         """Set the channels for this node"""

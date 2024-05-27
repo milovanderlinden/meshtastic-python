@@ -4,39 +4,40 @@ from typing import Optional, List
 from pydantic import BaseModel, Field, ConfigDict, ValidationError
 
 
+class Role(str, Enum):
+    """
+    proto source: config.proto
+    enum: Config.DeviceConfig.Role
+    """
+    CLIENT = 'CLIENT'
+    CLIENT_MUTE = 'CLIENT_MUTE'
+    ROUTER = 'ROUTER'
+    ROUTER_CLIENT = 'ROUTER_CLIENT'
+    REPEATER = 'REPEATER'
+    TRACKER = 'TRACKER'
+    SENSOR = 'SENSOR'
+    TAK = 'TAK'
+    CLIENT_HIDDEN = 'CLIENT_HIDDEN'
+    LOST_AND_FOUND = 'LOST_AND_FOUND'
+    TAK_TRACKER = 'TAK_TRACKER'
+
+
+class RebroadcastMode(str, Enum):
+    """
+    proto source: config.proto
+    enum: DeviceConfig.RebroadcastMode
+    """
+    ALL = 'ALL'
+    ALL_SKIP_DECODING = 'ALL_SKIP_DECODING'
+    LOCAL_ONLY = 'LOCAL_ONLY'
+    KNOWN_ONLY = 'KNOWN_ONLY'
+
+
 class DeviceConfig(BaseModel):
     """
     proto source: config.proto
     message: Config.DeviceConfig
     """
-
-    class Role(str, Enum):
-        """
-        proto source: config.proto
-        enum: Config.DeviceConfig.Role
-        """
-        CLIENT = 'CLIENT'
-        CLIENT_MUTE = 'CLIENT_MUTE'
-        ROUTER = 'ROUTER'
-        ROUTER_CLIENT = 'ROUTER_CLIENT'
-        REPEATER = 'REPEATER'
-        TRACKER = 'TRACKER'
-        SENSOR = 'SENSOR'
-        TAK = 'TAK'
-        CLIENT_HIDDEN = 'CLIENT_HIDDEN'
-        LOST_AND_FOUND = 'LOST_AND_FOUND'
-        TAK_TRACKER = 'TAK_TRACKER'
-
-    class RebroadcastMode(str, Enum):
-        """
-        proto source: config.proto
-        enum: DeviceConfig.RebroadcastMode
-        """
-        ALL = 'ALL'
-        ALL_SKIP_DECODING = 'ALL_SKIP_DECODING'
-        LOCAL_ONLY = 'LOCAL_ONLY'
-        KNOWN_ONLY = 'KNOWN_ONLY'
-
     role: Optional[Role] = Field(default=None)
     serial_enabled: Optional[bool] = Field(default=None, alias="serialEnabled")
     debug_log_enabled: Optional[bool] = Field(default=None)
@@ -51,242 +52,258 @@ class DeviceConfig(BaseModel):
     led_heartbeat_disabled: Optional[bool] = Field(default=None)
 
 
+class PositionFlags(Enum):
+    """
+    proto source: config.proto
+    enum: Config.PositionConfig.PositionFlag
+    """
+    UNSET = 0x0000
+    ALTITUDE = 0x0001
+    ALTITUDE_MSL = 0x0002
+    GEOIDAL_SEPARATION = 0x0004
+    DOP = 0x0008
+    HVDOP = 0x0010
+    SATINVIEW = 0x0020
+    SEQ_NO = 0x0040
+    TIMESTAMP = 0x0080
+    HEADING = 0x0100
+    SPEED = 0x0200
+
+
+class GpsMode(IntEnum):
+    """
+    proto source: config.proto
+    enum: Config.PositionConfig.GpsMode
+    """
+    DISABLED = 0
+    ENABLED = 1
+    NOT_PRESENT = 2
+
+
+class PositionConfig(BaseModel):
+    """
+    proto source: config.proto
+    message: Config.PositionConfig
+    """
+    position_broadcast_secs: Optional[int] = Field(default=None, alias="positionBroadcastSecs")
+    position_broadcast_smart_enabled: Optional[bool] = Field(default=None, alias="positionBroadcastSmartEnabled")
+    fixed_position: Optional[bool] = Field(default=None)
+    gps_enabled: Optional[bool] = Field(default=None, deprecated=True)
+    gps_update_interval: Optional[int] = Field(default=None, alias="gpsUpdateInterval")
+    gps_attempt_time: Optional[int] = Field(default=None, deprecated=True)
+    # TODO why is the PositionFlags Enum not used?
+    position_flags: Optional[int] = Field(default=None, alias="positionFlags")
+    rx_gpio: Optional[int] = Field(default=None)
+    tx_gpio: Optional[int] = Field(default=None)
+    broadcast_smart_minimum_distance: Optional[int] = Field(default=None, alias="broadcastSmartMinimumDistance")
+    broadcast_smart_minimum_interval_secs: Optional[int] = Field(
+        default=None,
+        alias="broadcastSmartMinimumIntervalSecs"
+    )
+    gps_en_gpio: Optional[int] = Field(default=None)
+    gps_mode: Optional[GpsMode] = Field(default=None, alias="gpsMode")
+
+
+class PowerConfig(BaseModel):
+    """
+    proto source: config.proto
+    message: Config.PowerConfig
+    """
+    is_power_saving: Optional[bool] = Field(default=None)
+    on_battery_shutdown_after_secs: Optional[int] = Field(default=None)
+    adc_multiplier_override: Optional[float] = Field(default=None)
+    wait_bluetooth_secs: Optional[int] = Field(default=None, alias="waitBluetoothSecs")
+    sds_secs: Optional[int] = Field(default=None, alias="sdsSecs")
+    ls_secs: Optional[int] = Field(default=None, alias="lsSecs")
+    min_wake_secs: Optional[int] = Field(default=None, alias="minWakeSecs")
+    device_battery_ina_address: Optional[int] = Field(default=None)
+
+
+class AddressMode(IntEnum):
+    """
+    proto source: config.proto
+    enum: Config.NetworkConfig.AdressMode
+    """
+    DHCP = 0
+    STATIC = 1
+
+
+class IpV4Config(BaseModel):
+    """
+    proto source: config.proto
+    message: Config.NetworkConfig.IpV4Config
+    """
+    ip: Optional[int] = Field(default=None)
+    gateway: Optional[int] = Field(default=None)
+    subnet: Optional[int] = Field(default=None)
+    dns: Optional[int] = Field(default=None)
+
+
+class NetworkConfig(BaseModel):
+    """
+    proto source: config.proto
+    message: Config.NetworkConfig
+    """
+    wifi_enabled: Optional[bool] = Field(default=None)
+    wifi_ssid: Optional[str] = Field(default=None)
+    wifi_psk: Optional[str] = Field(default=None)
+    ntp_server: Optional[str] = Field(default=None, alias="ntpServer")
+    eth_enabled: Optional[int] = Field(default=None)
+    address_mode: Optional[AddressMode] = Field(default=None)
+    ipv4_config: Optional[IpV4Config] = Field(default=None)
+    rsyslog_server: Optional[str] = Field(default=None)
+
+
+class GpsCoordinateFormat(IntEnum):
+    """
+    proto source: config.proto
+    enum: Config.DisplayConfig.GpsCoordinateFormat
+    """
+    DEC = 0
+    DMS = 1
+    UTM = 2
+    MGRS = 3
+    OLC = 4
+    OSGR = 5
+
+
+class DisplayUnits(IntEnum):
+    """
+    proto source: config.proto
+    enum: Config.DisplayConfig.DisplayUnits
+    """
+    METRIC = 0
+    IMPERIAL = 1
+
+
+class OledType(IntEnum):
+    """
+    proto source: config.proto
+    enum: Config.DisplayConfig.OledType
+    """
+    OLED_AUTO = 0
+    OLED_SSD1306 = 1
+    OLED_SH1106 = 2
+    OLED_SH1107 = 3
+
+
+class DisplayMode(IntEnum):
+    """
+    proto source: config.proto
+    enum: Config.DisplayConfig.DisplayMode
+    """
+    DEFAULT = 0
+    TWOCOLOR = 1
+    INVERTED = 2
+    COLOR = 3
+
+
+class DisplayConfig(BaseModel):
+    """
+    proto source: config.proto
+    message: Config.DisplayConfig
+    """
+    screen_on_secs: Optional[int] = Field(default=None, alias="screenOnSecs")
+    gps_format: Optional[GpsCoordinateFormat] = Field(default=None)
+    auto_screen_carousel_secs: Optional[int] = Field(default=None)
+    compass_north_top: Optional[bool] = Field(default=None)
+    flip_screen: Optional[bool] = Field(default=None)
+    units: Optional[DisplayUnits] = Field(default=None)
+    oled: Optional[OledType] = Field(default=None)
+    displaymode: Optional[DisplayMode] = Field(default=None)
+    heading_bold: Optional[bool] = Field(default=None)
+    wake_on_tap_or_motion: Optional[bool] = Field(default=None)
+
+
+class RegionCode(IntEnum):
+    """
+    proto source: config.proto
+    enum: Config.LoRaConfig.RegionCode
+    """
+    UNSET = 0
+    US = 1
+    EU_433 = 2
+    EU_868 = 3
+    CN = 4
+    JP = 5
+    ANZ = 6
+    KR = 7
+    TW = 8
+    RU = 9
+    IN = 10
+    NZ_865 = 11
+    TH = 12
+    LORA_24 = 13
+    UA_433 = 14
+    UA_868 = 15
+    MY_433 = 16
+    MY_919 = 17
+    SG_923 = 18
+
+
+class ModemPreset(IntEnum):
+    """
+    proto source: config.proto
+    enum: Config.LoRaConfig.ModemPreset
+    """
+    LONG_FAST = 0
+    LONG_SLOW = 1
+    VERY_LONG_SLOW = 2
+    MEDIUM_SLOW = 3
+    MEDIUM_FAST = 4
+    SHORT_SLOW = 5
+    SHORT_FAST = 6
+    LONG_MODERATE = 7
+
+
+class LoRaConfig(BaseModel):
+    """
+    proto source: config.proto
+    message: Config.LoRaConfig
+    """
+    use_preset: Optional[bool] = Field(default=None, alias="usePreset")
+    modem_preset: Optional[ModemPreset] = Field(default=None)
+    bandwidth: Optional[int] = Field(default=None)
+    spread_factor: Optional[int] = Field(default=None)
+    coding_rate: Optional[int] = Field(default=None)
+    frequency_offset: Optional[float] = Field(default=None)
+    region: Optional[RegionCode] = Field(default=None)
+    hop_limit: Optional[int] = Field(default=None, alias="hopLimit")
+    tx_enabled: Optional[bool] = Field(default=None, alias="txEnabled")
+    tx_power: Optional[int] = Field(default=None, alias="txPower")
+    channel_num: Optional[int] = Field(default=None)
+    override_duty_cycle: Optional[bool] = Field(default=None)
+    sx_126x_rx_boosted_gain: Optional[bool] = Field(default=None, alias="sx126xRxBoostedGain")
+    override_frequency: Optional[float] = Field(default=None)
+    ignore_incoming: Optional[List[int]] = Field(default=None)
+    ignore_mqtt: Optional[bool] = Field(default=None)
+
+
+class PairingMode(IntEnum):
+    """
+    proto source: config.proto
+    enum: Config.BluetoothConfig.PairingMode
+    """
+    RANDOM_PIN = 0
+    FIXED_PIN = 1
+    NO_PIN = 2
+
+
+class BluetoothConfig(BaseModel):
+    """
+    proto source: config.proto
+    message: Config.BluetoothConfig
+    """
+    enabled: Optional[bool] = Field(default=None)
+    mode: Optional[PairingMode] = Field(default=None)
+    fixed_pin: Optional[int] = Field(default=None, alias="fixedPin")
+
+
 class Config(BaseModel):
     """
     proto source: config.proto
     message: Config
     """
-
-    class PositionConfig(BaseModel):
-        """
-        proto source: config.proto
-        message: Config.PositionConfig
-        """
-
-        class PositionFlags(Enum):
-            """
-            proto source: config.proto
-            enum: Config.PositionConfig.PositionFlag
-            """
-            UNSET = 0x0000
-            ALTITUDE = 0x0001
-            ALTITUDE_MSL = 0x0002
-            GEOIDAL_SEPARATION = 0x0004
-            DOP = 0x0008
-            HVDOP = 0x0010
-            SATINVIEW = 0x0020
-            SEQ_NO = 0x0040
-            TIMESTAMP = 0x0080
-            HEADING = 0x0100
-            SPEED = 0x0200
-
-        class GpsMode(IntEnum):
-            """
-            proto source: config.proto
-            enum: Config.PositionConfig.GpsMode
-            """
-            DISABLED = 0
-            ENABLED = 1
-            NOT_PRESENT = 2
-
-        position_broadcast_secs: Optional[int] = Field(default=None, alias="positionBroadcastSecs")
-        position_broadcast_smart_enabled: Optional[bool] = Field(default=None, alias="positionBroadcastSmartEnabled")
-        fixed_position: Optional[bool] = Field(default=None)
-        gps_enabled: Optional[bool] = Field(default=None, deprecated=True)
-        gps_update_interval: Optional[int] = Field(default=None, alias="gpsUpdateInterval")
-        gps_attempt_time: Optional[int] = Field(default=None, deprecated=True)
-        # TODO why is the PositionFlags Enum not used?
-        position_flags: Optional[int] = Field(default=None, alias="positionFlags")
-        rx_gpio: Optional[int] = Field(default=None)
-        tx_gpio: Optional[int] = Field(default=None)
-        broadcast_smart_minimum_distance: Optional[int] = Field(default=None, alias="broadcastSmartMinimumDistance")
-        broadcast_smart_minimum_interval_secs: Optional[int] = Field(
-            default=None,
-            alias="broadcastSmartMinimumIntervalSecs"
-        )
-        gps_en_gpio: Optional[int] = Field(default=None)
-        gps_mode: Optional[GpsMode] = Field(default=None, alias="gpsMode")
-
-    class PowerConfig(BaseModel):
-        """
-        proto source: config.proto
-        message: Config.PowerConfig
-        """
-        is_power_saving: Optional[bool] = Field(default=None)
-        on_battery_shutdown_after_secs: Optional[int] = Field(default=None)
-        adc_multiplier_override: Optional[float] = Field(default=None)
-        wait_bluetooth_secs: Optional[int] = Field(default=None, alias="waitBluetoothSecs")
-        sds_secs: Optional[int] = Field(default=None, alias="sdsSecs")
-        ls_secs: Optional[int] = Field(default=None, alias="lsSecs")
-        min_wake_secs: Optional[int] = Field(default=None, alias="minWakeSecs")
-        device_battery_ina_address: Optional[int] = Field(default=None)
-
-    class NetworkConfig(BaseModel):
-        """
-        proto source: config.proto
-        message: Config.NetworkConfig
-        """
-        class AddressMode(IntEnum):
-            """
-            proto source: config.proto
-            enum: Config.NetworkConfig.AdressMode
-            """
-            DHCP = 0
-            STATIC = 1
-
-        class IpV4Config(BaseModel):
-            """
-            proto source: config.proto
-            message: Config.NetworkConfig.IpV4Config
-            """
-            ip: Optional[int] = Field(default=None)
-            gateway: Optional[int] = Field(default=None)
-            subnet: Optional[int] = Field(default=None)
-            dns: Optional[int] = Field(default=None)
-
-        wifi_enabled: Optional[bool] = Field(default=None)
-        wifi_ssid: Optional[str] = Field(default=None)
-        wifi_psk: Optional[str] = Field(default=None)
-        ntp_server: Optional[str] = Field(default=None, alias="ntpServer")
-        eth_enabled: Optional[int] = Field(default=None)
-        address_mode: Optional[AddressMode] = Field(default=None)
-        ipv4_config: Optional[IpV4Config] = Field(default=None)
-        rsyslog_server: Optional[str] = Field(default=None)
-
-    class DisplayConfig(BaseModel):
-        """
-        proto source: config.proto
-        message: Config.DisplayConfig
-        """
-        class GpsCoordinateFormat(IntEnum):
-            """
-            proto source: config.proto
-            enum: Config.DisplayConfig.GpsCoordinateFormat
-            """
-            DEC = 0
-            DMS = 1
-            UTM = 2
-            MGRS = 3
-            OLC = 4
-            OSGR = 5
-
-        class DisplayUnits(IntEnum):
-            """
-            proto source: config.proto
-            enum: Config.DisplayConfig.DisplayUnits
-            """
-            METRIC = 0
-            IMPERIAL = 1
-
-        class OledType(IntEnum):
-            """
-            proto source: config.proto
-            enum: Config.DisplayConfig.OledType
-            """
-            OLED_AUTO = 0
-            OLED_SSD1306 = 1
-            OLED_SH1106 = 2
-            OLED_SH1107 = 3
-
-        class DisplayMode(IntEnum):
-            """
-            proto source: config.proto
-            enum: Config.DisplayConfig.DisplayMode
-            """
-            DEFAULT = 0
-            TWOCOLOR = 1
-            INVERTED = 2
-            COLOR = 3
-
-        screen_on_secs: Optional[int] = Field(default=None, alias="screenOnSecs")
-        gps_format: Optional[GpsCoordinateFormat] = Field(default=None)
-        auto_screen_carousel_secs: Optional[int] = Field(default=None)
-        compass_north_top: Optional[bool] = Field(default=None)
-        flip_screen: Optional[bool] = Field(default=None)
-        units: Optional[DisplayUnits] = Field(default=None)
-        oled: Optional[OledType] = Field(default=None)
-        displaymode: Optional[DisplayMode] = Field(default=None)
-        heading_bold: Optional[bool] = Field(default=None)
-        wake_on_tap_or_motion: Optional[bool] = Field(default=None)
-
-    class LoRaConfig(BaseModel):
-        """
-        proto source: config.proto
-        message: Config.LoRaConfig
-        """
-        class RegionCode(IntEnum):
-            """
-            proto source: config.proto
-            enum: Config.LoRaConfig.RegionCode
-            """
-            UNSET = 0
-            US = 1
-            EU_433 = 2
-            EU_868 = 3
-            CN = 4
-            JP = 5
-            ANZ = 6
-            KR = 7
-            TW = 8
-            RU = 9
-            IN = 10
-            NZ_865 = 11
-            TH = 12
-            LORA_24 = 13
-            UA_433 = 14
-            UA_868 = 15
-            MY_433 = 16
-            MY_919 = 17
-            SG_923 = 18
-
-        class ModemPreset(IntEnum):
-            """
-            proto source: config.proto
-            enum: Config.LoRaConfig.ModemPreset
-            """
-            LONG_FAST = 0
-            LONG_SLOW = 1
-            VERY_LONG_SLOW = 2
-            MEDIUM_SLOW = 3
-            MEDIUM_FAST = 4
-            SHORT_SLOW = 5
-            SHORT_FAST = 6
-            LONG_MODERATE = 7
-
-        use_preset: Optional[bool] = Field(default=None, alias="usePreset")
-        modem_preset: Optional[ModemPreset] = Field(default=None)
-        bandwidth: Optional[int] = Field(default=None)
-        spread_factor: Optional[int] = Field(default=None)
-        coding_rate: Optional[int] = Field(default=None)
-        frequency_offset: Optional[float] = Field(default=None)
-        region: Optional[RegionCode] = Field(default=None)
-        hop_limit: Optional[int] = Field(default=None, alias="hopLimit")
-        tx_enabled: Optional[bool] = Field(default=None, alias="txEnabled")
-        tx_power: Optional[int] = Field(default=None, alias="txPower")
-        channel_num: Optional[int] = Field(default=None)
-        override_duty_cycle: Optional[bool] = Field(default=None)
-        sx_126x_rx_boosted_gain: Optional[bool] = Field(default=None, alias="sx126xRxBoostedGain")
-        override_frequency: Optional[float] = Field(default=None)
-        ignore_incoming: Optional[List[int]] = Field(default=None)
-        ignore_mqtt: Optional[bool] = Field(default=None)
-
-    class BluetoothConfig(BaseModel):
-        """
-        proto source: config.proto
-        message: Config.BluetoothConfig
-        """
-        class PairingMode(IntEnum):
-            """
-            proto source: config.proto
-            enum: Config.BluetoothConfig.PairingMode
-            """
-            RANDOM_PIN = 0
-            FIXED_PIN = 1
-            NO_PIN = 2
-
-        enabled: Optional[bool] = Field(default=None)
-        mode: Optional[PairingMode] = Field(default=None)
-        fixed_pin: Optional[int] = Field(default=None, alias="fixedPin")
 
     # Payload
     device: Optional[DeviceConfig] = Field(default=None)

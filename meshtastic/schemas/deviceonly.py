@@ -34,6 +34,7 @@ class PositionLite(BaseModel):
             values['time'] = datetime.fromtimestamp(values["time"])
         return values
 
+
 class NodeInfoLite(BaseModel):
     """
     proto source: deviceonly.proto

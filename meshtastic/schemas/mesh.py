@@ -6,7 +6,7 @@ from typing import Optional, List, Dict, Any
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 from .channel import Channel
-from .config import DeviceConfig, Config
+from .config import Config, Role
 from .module_config import ModuleConfig, RemoteHardwarePin
 from .portnums import PortNum
 from .telemetry import DeviceMetrics
@@ -82,33 +82,34 @@ class HardwareModel(str, Enum):
     PRIVATE_HW = 'PRIVATE_HW'
 
 
+class LocSource(IntEnum):
+    """
+    proto source: mesh.proto
+    enum: Position.LocSource
+    """
+    LOC_UNSET = 0
+    LOC_MANUAL = 1
+    LOC_INTERNAL = 2
+    LOC_EXTERNAL = 3
+
+
+class AltSource(IntEnum):
+    """
+    proto source: mesh.proto
+    enum: Position.AltSource
+    """
+    ALT_UNSET = 0
+    ALT_MANUAL = 1
+    ALT_INTERNAL = 2
+    ALT_EXTERNAL = 3
+    ALT_BAROMETRIC = 4
+
+
 class Position(BaseModel):
     """
     proto source: mesh.proto
     message: Position
     """
-
-    class LocSource(IntEnum):
-        """
-        proto source: mesh.proto
-        enum: Position.LocSource
-        """
-        LOC_UNSET = 0
-        LOC_MANUAL = 1
-        LOC_INTERNAL = 2
-        LOC_EXTERNAL = 3
-
-    class AltSource(IntEnum):
-        """
-        proto source: mesh.proto
-        enum: Position.AltSource
-        """
-        ALT_UNSET = 0
-        ALT_MANUAL = 1
-        ALT_INTERNAL = 2
-        ALT_EXTERNAL = 3
-        ALT_BAROMETRIC = 4
-
     # payload
     latitude: Optional[float] = Field(default=None)
     longitude: Optional[float] = Field(default=None)
@@ -161,7 +162,7 @@ class User(BaseModel):
     macaddr: Optional[bytes] = Field(default=None, deprecated=True)
     hw_model: Optional[HardwareModel] = Field(default=None, alias="hwModel")
     is_licensed: Optional[bool] = Field(default=None)
-    role: Optional[DeviceConfig.Role] = Field(default=None)
+    role: Optional[Role] = Field(default=None)
 
     @field_validator('macaddr', mode='before')
     @classmethod
@@ -185,29 +186,30 @@ class RouteDiscovery(BaseModel):
     route: Optional[List[int]] = Field(default=None)
 
 
+class Error(IntEnum):
+    """
+    proto source: mesh.proto
+    enum: Routing.Error
+    """
+    NONE = 0
+    NO_ROUTE = 1
+    GOT_NAK = 2
+    TIMEOUT = 3
+    NO_INTERFACE = 4
+    MAX_RETRANSMIT = 5
+    NO_CHANNEL = 6
+    TOO_LARGE = 7
+    NO_RESPONSE = 8
+    DUTY_CYCLE_LIMIT = 9
+    BAD_REQUEST = 32
+    NOT_AUTHORIZED = 33
+
+
 class Routing(BaseModel):
     """
     proto source: mesh.proto
     message: Routing
     """
-    class Error(IntEnum):
-        """
-        proto source: mesh.proto
-        enum: Routing.Error
-        """
-        NONE = 0
-        NO_ROUTE = 1
-        GOT_NAK = 2
-        TIMEOUT = 3
-        NO_INTERFACE = 4
-        MAX_RETRANSMIT = 5
-        NO_CHANNEL = 6
-        TOO_LARGE = 7
-        NO_RESPONSE = 8
-        DUTY_CYCLE_LIMIT = 9
-        BAD_REQUEST = 32
-        NOT_AUTHORIZED = 33
-
     # variant
     route_request: Optional[RouteDiscovery] = Field(default=None)
     route_reply: Optional[RouteDiscovery] = Field(default=None)
@@ -254,33 +256,35 @@ class MqttClientProxyMessage(BaseModel):
     retained: Optional[bool] = Field(default=None)
 
 
+class Priority(IntEnum):
+    """
+    proto source: mesh.proto
+    enum: MeshPacket.Priority
+    """
+    UNSET = 0
+    MIN = 1
+    BACKGROUND = 10
+    DEFAULT = 64
+    RELIABLE = 70
+    ACK = 120
+    MAX = 127
+
+
+class Delayed(IntEnum):
+    """
+    proto source: mesh.proto
+    enum: MeshPacket.Delayed
+    """
+    NO_DELAY = 0
+    DELAYED_BROADCAST = 1
+    DELAYED_DIRECT = 2
+
+
 class MeshPacket(BaseModel):
     """
     proto source: mesh.proto
     message: MeshPacket
     """
-    class Priority(IntEnum):
-        """
-        proto source: mesh.proto
-        enum: MeshPacket.Priority
-        """
-        UNSET = 0
-        MIN = 1
-        BACKGROUND = 10
-        DEFAULT = 64
-        RELIABLE = 70
-        ACK = 120
-        MAX = 127
-
-    class Delayed(IntEnum):
-        """
-        proto source: mesh.proto
-        enum: MeshPacket.Delayed
-        """
-        NO_DELAY = 0
-        DELAYED_BROADCAST = 1
-        DELAYED_DIRECT = 2
-
     node_from: Optional[int] = Field(default=None, alias="from")
     to: Optional[int] = Field(default=None)
     channel: Optional[int] = Field(default=None)
@@ -352,25 +356,25 @@ class MyNodeInfo(BaseModel):
     min_app_version: Optional[int] = Field(default=None, alias="minAppVersion")
 
 
+class Level(IntEnum):
+    """
+    proto source: mesh.proto
+    message: LogRecord.Level
+    """
+    UNSET = 0
+    CRITICAL = 50
+    ERROR = 40
+    WARNING = 30
+    INFO = 20
+    DEBUG = 10
+    TRACE = 5
+
+
 class LogRecord(BaseModel):
     """
     proto source: mesh.proto
     message: LogRecord
     """
-
-    class Level(IntEnum):
-        """
-        proto source: mesh.proto
-        message: LogRecord.Level
-        """
-        UNSET = 0
-        CRITICAL = 50
-        ERROR = 40
-        WARNING = 30
-        INFO = 20
-        DEBUG = 10
-        TRACE = 5
-
     message: Optional[str] = Field(default=None)
     time: Optional[int] = Field(default=None)
     source: Optional[str] = Field(default=None)
@@ -405,7 +409,7 @@ class DeviceMetadata(BaseModel):
     canShutdown: Optional[bool] = Field(default=None)
     hasWifi: Optional[bool] = Field(default=None)
     hasBluetooth: Optional[bool] = Field(default=None)
-    role: Optional[DeviceConfig.Role] = Field(default=None)
+    role: Optional[Role] = Field(default=None)
     position_flags: Optional[int] = Field(default=None, alias='positionFlags')
     hw_model: Optional[str] = Field(default=None, alias='hwModel')
     hasRemoteHardware: Optional[bool] = Field(default=None)

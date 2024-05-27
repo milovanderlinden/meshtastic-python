@@ -40,10 +40,10 @@ def onReceive(packet, interface):
 
         # Exit once we receive a reply
         if (
-            args
-            and args.sendtext
-            and packet["to"] == interface.myInfo.my_node_num
-            and d["portnum"] == portnums_pb2.PortNum.TEXT_MESSAGE_APP
+                args
+                and args.sendtext
+                and packet["to"] == interface.myInfo.my_node_num
+                and d["portnum"] == portnums_pb2.PortNum.TEXT_MESSAGE_APP
         ):
             interface.close()  # after running command then exit
 
@@ -259,6 +259,8 @@ def setPref(config, comp_name, valStr) -> bool:
 
 def onConnected(interface):
     """Callback invoked when we connect to a radio"""
+    logging.debug("We are connected")
+
     closeNow = False  # Should we drop the connection after we finish?
     waitForAckNak = (
         False  # Should we wait for an acknowledgment if we send to a remote node?
@@ -298,10 +300,11 @@ def onConnected(interface):
             interface.localNode.writeConfig("position")
         elif not args.no_time:
             # We normally provide a current time to the mesh when we connect
-            if interface.localNode.nodeNum in interface.nodesByNum and "position" in interface.nodesByNum[interface.localNode.nodeNum]:
+            if interface.localNode.nodeNum in interface.nodes and "position" in interface.nodes[interface.localNode.nodeNum]:
                 # send the same position the node already knows, just to update time
                 position = interface.nodesByNum[interface.localNode.nodeNum]["position"]
-                interface.sendPosition(position.get("latitude", 0.0), position.get("longitude", 0.0), position.get("altitude", 0.0))
+                interface.sendPosition(position.get("latitude", 0.0), position.get("longitude", 0.0),
+                                       position.get("altitude", 0.0))
             else:
                 interface.sendPosition()
 
@@ -458,7 +461,8 @@ def onConnected(interface):
             else:
                 channelIndex = mt_config.channel_index or 0
                 if checkChannel(interface, channelIndex):
-                    print(f"Sending telemetry request to {args.dest} on channelIndex:{channelIndex} (this could take a while)")
+                    print(
+                        f"Sending telemetry request to {args.dest} on channelIndex:{channelIndex} (this could take a while)")
                     interface.sendTelemetry(destinationId=args.dest, wantResponse=True, channelIndex=channelIndex)
 
         if args.request_position:
@@ -467,7 +471,8 @@ def onConnected(interface):
             else:
                 channelIndex = mt_config.channel_index or 0
                 if checkChannel(interface, channelIndex):
-                    print(f"Sending position request to {args.dest} on channelIndex:{channelIndex} (this could take a while)")
+                    print(
+                        f"Sending position request to {args.dest} on channelIndex:{channelIndex} (this could take a while)")
                     interface.sendPosition(destinationId=args.dest, wantResponse=True, channelIndex=channelIndex)
 
         if args.gpio_wrb or args.gpio_rd or args.gpio_watch:
@@ -805,6 +810,7 @@ def onConnected(interface):
             print("")
             # If we aren't trying to talk to our local node, don't show it
             if args.dest == BROADCAST_ADDR:
+                # this is where we gather all info
                 interface.showInfo()
                 print("")
                 interface.getNode(args.dest).showInfo()
@@ -877,7 +883,7 @@ def onConnected(interface):
             interface.getNode(args.dest, False).iface.waitForAckNak()
 
         if args.wait_to_disconnect:
-            print(f"Waiting {args.wait_to_disconnect} seconds before disconnecting" )
+            print(f"Waiting {args.wait_to_disconnect} seconds before disconnecting")
             time.sleep(int(args.wait_to_disconnect))
 
         # if the user didn't ask for serial debugging output, we might want to exit after we've done our operation
@@ -1097,7 +1103,7 @@ def common():
 
             have_tunnel = platform.system() == "Linux"
             if (
-                args.noproto or args.reply or (have_tunnel and args.tunnel) or args.listen
+                    args.noproto or args.reply or (have_tunnel and args.tunnel) or args.listen
             ):  # loop until someone presses ctrlc
                 while True:
                     time.sleep(1000)
@@ -1109,7 +1115,8 @@ def common():
 def addConnectionArgs(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
     """Add connection specifiation arguments"""
 
-    outer = parser.add_argument_group('Connection', 'Optional arguments that specify how to connect to a Meshtastic device.')
+    outer = parser.add_argument_group('Connection',
+                                      'Optional arguments that specify how to connect to a Meshtastic device.')
     group = outer.add_mutually_exclusive_group()
     group.add_argument(
         "--port",
@@ -1359,24 +1366,24 @@ def initParser():
     group.add_argument(
         "--traceroute",
         help="Traceroute from connected node to a destination. "
-        "You need pass the destination ID as argument, like "
-        "this: '--traceroute !ba4bf9d0' "
-        "Only nodes that have the encryption key can be traced.",
+             "You need pass the destination ID as argument, like "
+             "this: '--traceroute !ba4bf9d0' "
+             "Only nodes that have the encryption key can be traced.",
     )
 
     group.add_argument(
         "--request-telemetry",
         help="Request telemetry from a node. "
-        "You need to pass the destination ID as argument with '--dest'. "
-        "For repeaters, the nodeNum is required.",
+             "You need to pass the destination ID as argument with '--dest'. "
+             "For repeaters, the nodeNum is required.",
         action="store_true",
     )
 
     group.add_argument(
         "--request-position",
         help="Request the position from a node. "
-        "You need to pass the destination ID as an argument with '--dest'. "
-        "For repeaters, the nodeNum is required.",
+             "You need to pass the destination ID as an argument with '--dest'. "
+             "For repeaters, the nodeNum is required.",
         action="store_true",
     )
 
@@ -1471,8 +1478,8 @@ def initParser():
     group.add_argument(
         "--pos-fields",
         help="Specify fields to send when sending a position. Use no argument for a list of valid values. "
-        "Can pass multiple values as a space separated list like "
-        "this: '--pos-fields POS_ALTITUDE POS_ALT_MSL'",
+             "Can pass multiple values as a space separated list like "
+             "this: '--pos-fields POS_ALTITUDE POS_ALT_MSL'",
         nargs="*",
         action="store",
     )
@@ -1515,7 +1522,8 @@ def initParser():
 
     have_tunnel = platform.system() == "Linux"
     if have_tunnel:
-        tunnelArgs = parser.add_argument_group('Tunnel', 'Arguments related to establishing a tunnel device over the mesh.')
+        tunnelArgs = parser.add_argument_group('Tunnel',
+                                               'Arguments related to establishing a tunnel device over the mesh.')
         tunnelArgs.add_argument(
             "--tunnel",
             action="store_true",
@@ -1529,7 +1537,6 @@ def initParser():
         )
 
     parser.set_defaults(deprecated=None)
-
 
     args = parser.parse_args()
     mt_config.args = args

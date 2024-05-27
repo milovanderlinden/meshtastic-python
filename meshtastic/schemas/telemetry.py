@@ -1,7 +1,7 @@
 from typing import Optional
 
 from pydantic import BaseModel
-from pydantic.v1 import Field
+from pydantic import Field
 
 
 class DeviceMetrics(BaseModel):

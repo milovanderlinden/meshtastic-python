@@ -27,16 +27,13 @@ from . import (
 from .constants import BROADCAST_ADDR, LOCAL_ADDR, BROADCAST_NUM, publishingThread
 from .known_protocol import protocols
 from .response_handler import ResponseHandler
-from .schemas.mesh import NodeInfo, Channel, Config, ModuleConfig, Position, MyNodeInfo, DeviceMetadata
+from .schemas.mesh import NodeInfo, Channel, Config, ModuleConfig, Position, DeviceMetadata, MyNodeInfo
 
 from .util import (
     Acknowledgment,
     Timeout,
-    convert_mac_addr,
     our_exit,
-    remove_keys_from_dict,
     stripnl,
-    message_to_json,
 )
 
 
@@ -49,16 +46,12 @@ class MeshInterface:
     nodes
     debugOut
     """
-    my_info: MyNodeInfo = None  # We don't have device info yet
+    my_node_info: MyNodeInfo = None  # We don't have device info yet
     metadata: DeviceMetadata = DeviceMetadata()  # Metadata object
-    nodes: Dict[str, NodeInfo] = {}
-    nodesByNum: Dict[int, NodeInfo] = {}
+    nodes: Dict[int, NodeInfo] = {}  # Dict with nodes by number
     channels: List[Channel] = [Channel()] * 8  # 8 empty channel definitions
     config: Config = Config()  # Config object
     module_config: ModuleConfig = ModuleConfig()  # ModuleConfig Object
-    mask: int = None  # used in gpio read and gpio watch
-    gotResponse: bool = False  # used in gpio read
-    failure = None
 
     class MeshInterfaceError(Exception):
         """An exception class for general mesh interface errors"""
@@ -87,7 +80,6 @@ class MeshInterface:
         self._timeout: Timeout = Timeout()
         self._acknowledgment: Acknowledgment = Acknowledgment()
         self.heartbeatTimer: Optional[threading.Timer] = None
-        random.seed()  # FIXME, we should not clobber the random seedval here, instead tell user they must call it
         self.currentPacketId: int = random.randint(0, 0xFFFFFFFF)
         self.configId: Optional[int] = None
 
@@ -116,25 +108,13 @@ class MeshInterface:
 
     def showInfo(self, file=sys.stdout) -> str:  # pylint: disable=W0613
         """Show human-readable summary about this object"""
-        _node_info = self.getMyNodeInfo()
-        _owner = f"Owner: {_node_info.user.long_name} ({_node_info.user.short_name})"
-        _info = f"\nMy info: {_node_info.model_dump_json(by_alias=False, exclude_none=True, exclude={'user'})}"
-        _metadata = f"\nMetadata: {self.metadata.model_dump_json(by_alias=False, exclude_none=True)}"
-        _mesh = "\n\nNodes in mesh: "
-        nodes = {}
-        if self.nodes:
-            for n in self.nodes.values():
-                # when the TBeam is first booted, it sometimes shows the raw data
-                if n.user:
-                    nodes[n.user.id] = n
+        logging.debug("ShowInfo")
+        _out = {
+            "myNodeInfo": self.my_node_info.dict()
+        }
+        _json = json.dumps(_out)
+        print(_json)
 
-        info = _owner + _info + _metadata + _mesh + json.dumps(
-            [value.model_dump(by_alias=False, exclude_none=True) for key, value in nodes.items()],
-            indent=2,
-            default=str
-        )
-        print(info)
-        return info
 
     def showNodes(self, includeSelf: bool = True, file=sys.stdout) -> str:  # pylint: disable=W0613
         """Show table summary of nodes in mesh"""
@@ -533,7 +513,7 @@ class MeshInterface:
         """
 
         # We allow users to talk to the local node before we've completed the full connection flow...
-        if self.my_info is not None and destinationId != self.my_info.my_node_num:
+        if self.my_node_info is not None and destinationId != self.my_node_info.my_node_num:
             self._waitConnected()
 
         toRadio = mesh_pb2.ToRadio()
@@ -546,10 +526,10 @@ class MeshInterface:
         elif destinationId == BROADCAST_ADDR:
             nodeNum = BROADCAST_NUM
         elif destinationId == LOCAL_ADDR:
-            if self.my_info:
-                nodeNum = self.my_info.my_node_num
+            if self.my_node_info:
+                nodeNum = self.my_node_info.num
             else:
-                our_exit("Warning: No my_info found.")
+                our_exit("Warning: No my_node_info found.")
         # A simple hex style nodeid - we can parse this without needing the DB
         elif destinationId.startswith("!"):
             nodeNum = int(destinationId[1:], 16)
@@ -587,7 +567,7 @@ class MeshInterface:
     def waitForConfig(self):
         """Block until radio config is received. Returns True if config has been received."""
         success = (
-                self._timeout.waitForSet(self, attrs=("my_info", "nodes"))
+                self._timeout.waitForSet(self, attrs=("my_node_info", "nodes"))
                 and self.localNode.waitForConfig()
         )
         if not success:
@@ -616,13 +596,6 @@ class MeshInterface:
         success = self._timeout.waitForPosition(self._acknowledgment)
         if not success:
             raise MeshInterface.MeshInterfaceError("Timed out waiting for position")
-
-    def getMyNodeInfo(self) -> Optional[NodeInfo]:
-        """Get info about my node."""
-        if self.my_info is None or self.nodesByNum is None:
-            return None
-        logging.debug(f"self.nodesByNum:{self.nodesByNum}")
-        return self.nodesByNum.get(self.my_info.my_node_num)
 
     def _waitConnected(self, timeout=30.0):
         """Block until the initial node db download is complete, or timeout
@@ -683,11 +656,6 @@ class MeshInterface:
 
     def _startConfig(self):
         """Start device packets flowing"""
-        self.my_info = None
-        self.nodes = {}  # nodes keyed by ID
-        self.nodesByNum = {}  # nodes keyed by node number
-        self._localChannels = []  # empty until we start getting channels pushed from the device (during config)
-
         start_config = mesh_pb2.ToRadio()
         self.configId = random.randint(0, 0xFFFFFFFF)
         start_config.want_config_id = self.configId
@@ -768,7 +736,7 @@ class MeshInterface:
         Done with initial config messages, now send regular MeshPackets
         to ask for settings and channels
         """
-        self.localNode.setChannels(self._localChannels)
+        self.localNode.setChannels(self.channels)
 
         # the following should only be called after we have settings and channels
         self._connected()  # Tell everyone else we are ready to go
@@ -797,28 +765,24 @@ class MeshInterface:
         Handle a packet that arrived from the radio
         (update model and publish events) called by subclasses
         """
-
+        _key = None
         _from_radio = mesh_pb2.FromRadio()
         _from_radio.ParseFromString(fromRadioBytes)
         _message = google.protobuf.json_format.MessageToDict(_from_radio)
-
-        if "myInfo" in _message:
-            self.my_info = MyNodeInfo(**_message["myInfo"])
-            self.localNode.nodeNum = self.my_info.my_node_num
-            logging.debug(f"Received myinfo: {stripnl(_from_radio.my_info)}")
-
-        elif "metadata" in _message:
+        _keys = list(_message.keys())
+        if len(_keys) == 1:
+            _key = _keys[0]
+        else:
+            raise ValueError(f"Something is wrong with the message, {','.join(_keys)}")
+        logging.debug(f"Received {_key} message")
+        if _key == "myInfo":
+            self.my_node_info = MyNodeInfo(**_message["myInfo"])
+        elif _key == "metadata" in _message:
             self.metadata = DeviceMetadata(**_message["metadata"])
-            logging.debug(f"Received device metadata: {stripnl(_from_radio.metadata)}")
-
         elif "nodeInfo" in _message:
             _node_info = NodeInfo(**_message["nodeInfo"])
-            logging.debug(f"Received nodeinfo: {_node_info.dict()}")
-
-            self.nodesByNum[_node_info.num] = _node_info
-            if _node_info.user is not None:  # Some nodes might not have user/ids assigned yet
-                if _node_info.user is not None and _node_info.user.id is not None:
-                    self.nodes[_node_info.user.id] = _node_info
+            self.nodes[_node_info.num] = _node_info
+            logging.debug(f"Got {len(list(self.nodes.keys()))} nodes")
             publishingThread.queueWork(
                 lambda: pub.sendMessage(
                     "meshtastic.node.updated", node=_node_info.dict(), interface=self
@@ -827,6 +791,7 @@ class MeshInterface:
         elif "channel" in _message:
             _channel = Channel(**_message["channel"])
             self.channels[_channel.index] = _channel
+            logging.debug(f"Setting channel {_channel.index}")
 
         elif "config" in _message:
             self.config.update(**_message["config"])
@@ -846,19 +811,9 @@ class MeshInterface:
             MeshInterface._disconnected(self)
 
             self._startConfig()  # redownload the node db etc...
-
-    def _fixupPosition(self, position: Optional[Position]) -> Position:
-        """Convert integer lat/lon into floats
-
-        Arguments:
-            position {Position dictionary} -- object to fix up
-        Returns the position with the updated keys
-        """
-        if position.latitude_i is not None:
-            position.latitude = position.latitude_i * 1e-7
-        if position.longitude_i is not None:
-            position.longitude = position.longitude_i * 1e-7
-        return position
+        else:
+            logging.warning(F"Unhandled message {_key}")
+        return None
 
     def _nodeNumToId(self, num):
         """Map a node node number to a node ID
