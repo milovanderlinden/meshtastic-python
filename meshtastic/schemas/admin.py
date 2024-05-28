@@ -12,11 +12,10 @@ from .connection_status import DeviceConnectionStatus
 
 class HamParameters(BaseModel):
     """
-    # proto source: admin.proto
-    message: HamParameters
+    Amateur radio call sign, eg. KD2ABC
 
-    https://github.com/meshtastic/protobufs/blob/master/meshtastic/admin.proto#L351
-
+    - __proto source__: [admin.proto](https://github.com/meshtastic/protobufs/blob/master/meshtastic/admin.proto)
+    - __message__: [HamParameters](https://github.com/meshtastic/protobufs/blob/master/meshtastic/admin.proto#L351)
     """
     call_sign: Optional[str] = Field(default=None)
     tx_power: Optional[int] = Field(default=None)
@@ -26,15 +25,18 @@ class HamParameters(BaseModel):
 
 class NodeRemoteHardwarePinsResponse(BaseModel):
     """
-    proto source: admin.proto
-    message: NodeRemoteHardwarePinsResponse
+    Nodes and their respective remote hardware GPIO pins
 
-    https://github.com/meshtastic/protobufs/blob/master/meshtastic/admin.proto#L231
+    - __proto source__: [admin.proto](https://github.com/meshtastic/protobufs/blob/master/meshtastic/admin.proto)
+    - __message__: [NodeRemoteHardwarePinsResponse](https://github.com/meshtastic/protobufs/blob/master/meshtastic/admin.proto#L231)
     """
     node_remote_hardware_pins: Optional[List[NodeRemoteHardwarePin]] = Field(default=None)
 
 
 class ConfigType(str, Enum):
+    """
+    Configuration type that serves as header for the request or response to inform about the payload
+    """
     DEVICE_CONFIG = 'DEVICE_CONFIG'
     POSITION_CONFIG = 'POSITION_CONFIG'
     POWER_CONFIG = 'POWER_CONFIG'
@@ -45,6 +47,7 @@ class ConfigType(str, Enum):
 
 
 class ModuleConfigType(str, Enum):
+    """ Module Configuration type that serves as header for the request or response to inform about the payload"""
     MQTT_CONFIG = 'MQTT_CONFIG'
     SERIAL_CONFIG = 'SERIAL_CONFIG'
     EXTNOTIF_CONFIG = 'EXTNOTIF_CONFIG'
@@ -62,10 +65,12 @@ class ModuleConfigType(str, Enum):
 
 class AdminMessage(BaseModel):
     """
-    proto source: admin.proto
-    message: AdminMessage
+    This message is handled by the Admin module and is responsible for all settings/channel read/write operations.
+    This message is used to do settings operations to both remote AND local nodes.
+    (Prior to 1.2 these operations were done via special ToRadio operations)
 
-    https://github.com/meshtastic/protobufs/blob/master/meshtastic/admin.proto#L22
+    - __proto source__: [admin.proto](https://github.com/meshtastic/protobufs/blob/master/meshtastic/admin.proto)
+    - __message__: [AdminMessage](https://github.com/meshtastic/protobufs/blob/master/meshtastic/admin.proto#L22)
     """
 
     get_channel_request: Optional[int] = Field(default=None)

@@ -1,0 +1,77 @@
+site_name: Meshtastic
+
+theme:
+  name: "material"
+
+
+plugins:
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: sphinx
+
+nav:
+  - General: index.md
+  - Application:
+      - Bluetooth: ble_interface.md
+      - Constants: constants.md
+      - Info: info.md
+      - Known protocol: known_protocol.md
+      - Mesh interface: mesh_interface.md
+      - MT Config: mt_config.md
+      - Node: node.md
+      - Remote hardware: remote_hardware.md
+      - Response handler: response_handler.md
+      - Serial interface: serial_interface.md
+      - Stream interface: stream_interface.md
+      - Supported device: supported_device.md
+      - TCP interface: tcp_interface.md
+      - Test: test.md
+      - Tunnel: tunnel.md
+      - Utilities: util.md
+      - Version: version.md
+
+  - Schema:
+      - schemas/admin.md
+      - schemas/apponly.md
+      - schemas/atak.md
+      - schemas/cannedmessages.md
+      - schemas/channel.md
+      - schemas/clientonly.md
+      - schemas/config.md
+      - schemas/connection_status.md
+      - schemas/deviceonly.md
+      - schemas/localonly.md
+      - schemas/mesh.md
+      - schemas/module_config.md
+      - schemas/mqtt.md
+      - schemas/paxcount.md
+      - schemas/portnums.md
+      - schemas/remote_hardware.md
+      - schemas/rtttl.md
+      - schemas/storeforward.md
+      - schemas/telemetry.md
+      - schemas/xmodem.md
+  - Proto:
+      - admin_pb2.md
+      - apponly_pb2.md
+      - atak_pb2.md
+      - cannedmessages_pb2.md
+      - channel_pb2.md
+      - clientonly_pb2.md
+      - config_pb2.md
+      - connection_status_pb2.md
+      - deviceonly_pb2.md
+      - localonly_pb2.md
+      - mesh_pb2.md
+      - module_config_pb2.md
+      - mqtt_pb2.md
+      - nanopb_pb2.md
+      - paxcount_pb2.md
+      - portnums_pb2.md
+      - remote_hardware_pb2.md
+      - rtttl_pb2.md
+      - storeforward_pb2.md
+      - telemetry_pb2.md
+      - xmodem_pb2.md

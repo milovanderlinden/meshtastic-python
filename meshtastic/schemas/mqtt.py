@@ -1,7 +1,7 @@
 from typing import Optional, Dict, Any
 
 from pydantic import BaseModel, Field, model_validator
-from .config import Config
+from .config import Role, RegionCode, ModemPreset
 from .mesh import MeshPacket, HardwareModel
 
 
@@ -22,11 +22,11 @@ class MapReport(BaseModel):
     """
     long_name: Optional[str] = Field(default=None)
     short_name: Optional[str] = Field(default=None)
-    role: Optional[Config.DeviceConfig.Role] = Field(default=None)
+    role: Optional[Role] = Field(default=None)
     hw_model: Optional[HardwareModel] = Field(default=None)
     firmware_version: Optional[str] = Field(default=None)
-    region: Optional[Config.LoRaConfig.RegionCode] = Field(default=None)
-    modem_preset: Optional[Config.LoRaConfig.ModemPreset] = Field(default=None)
+    region: Optional[RegionCode] = Field(default=None)
+    modem_preset: Optional[ModemPreset] = Field(default=None)
     has_default_channel: Optional[bool] = Field(default=None)
     latitude_i: Optional[int] = Field(default=None, alias="latitudeI")
     longitude_i: Optional[int] = Field(default=None, alias="longitudeI")

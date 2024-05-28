@@ -33,7 +33,12 @@ from .version import get_active_version
 
 
 def onReceive(packet, interface):
-    """Callback invoked when a packet arrives"""
+    """Callback invoked when a packet arrives
+
+    Args:
+        packet (str) the packet to parse
+        interface (object) the interface to use
+    """
     args = mt_config.args
     try:
         d = packet.get("decoded")

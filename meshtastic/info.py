@@ -1,5 +1,5 @@
-from pydantic import BaseModel, Extra
+from pydantic import BaseModel
 
 
-class Info(BaseModel, extra=Extra.allow):
+class Info(BaseModel, extra='allow'):
     """ Placeholder for showing Info """
