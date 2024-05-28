@@ -634,3 +634,20 @@ def message_to_json(message, multiline=False):
     """Return protobuf message as JSON. Always print all fields, even when not present in data."""
     json = MessageToJson(message, always_print_fields_with_no_presence=True)
     return stripnl(json) if not multiline else json
+
+
+def clean_nones(value):
+    """
+    Recursively remove all None values from dictionaries and lists, and returns
+    the result as a new dictionary or list.
+    """
+    if isinstance(value, list):
+        return [clean_nones(x) for x in value if x is not None]
+    elif isinstance(value, dict):
+        return {
+            key: clean_nones(val)
+            for key, val in value.items()
+            if val is not None
+        }
+    else:
+        return value

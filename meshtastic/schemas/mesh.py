@@ -159,7 +159,7 @@ class User(BaseModel):
     id: Optional[str] = Field(default=None)
     long_name: Optional[str] = Field(default=None, alias="longName")
     short_name: Optional[str] = Field(default=None, alias="shortName")
-    macaddr: Optional[bytes] = Field(default=None, deprecated=True)
+    macaddr: Optional[str] = Field(default=None, deprecated=True)
     hw_model: Optional[HardwareModel] = Field(default=None, alias="hwModel")
     is_licensed: Optional[bool] = Field(default=None)
     role: Optional[Role] = Field(default=None)

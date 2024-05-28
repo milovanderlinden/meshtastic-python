@@ -3,6 +3,7 @@
 """
 
 import argparse
+import json
 import logging
 import os
 import platform
@@ -807,21 +808,18 @@ def onConnected(interface):
             interface.getNode(args.dest).get_ringtone()
 
         if args.info:
-            print("")
             # If we aren't trying to talk to our local node, don't show it
             if args.dest == BROADCAST_ADDR:
                 # this is where we gather all info
-                interface.showInfo()
-                print("")
-                interface.getNode(args.dest).showInfo()
+                info = interface.showInfo()
                 closeNow = True
-                print("")
                 pypi_version = util.check_if_newer_version()
                 if pypi_version:
                     print(
                         f"*** A newer version v{pypi_version} is available!"
                         ' Consider running "pip install --upgrade meshtastic" ***\n'
                     )
+                print(info.model_dump_json(exclude_none=True, indent=2))
             else:
                 print("Showing info of remote node is not supported.")
                 print(
@@ -932,66 +930,14 @@ def subscribe():
 
 def export_config(interface):
     """used in --export-config"""
-    configObj = {}
-
-    owner = interface.getLongName()
-    owner_short = interface.getShortName()
-    channel_url = interface.localNode.getURL()
-    myinfo = interface.getMyNodeInfo()
-    pos = myinfo.get("position")
-    lat = None
-    lon = None
-    alt = None
-    if pos:
-        lat = pos.get("latitude")
-        lon = pos.get("longitude")
-        alt = pos.get("altitude")
-
-    if owner:
-        configObj["owner"] = owner
-    if owner_short:
-        configObj["owner_short"] = owner_short
-    if channel_url:
-        if mt_config.camel_case:
-            configObj["channelUrl"] = channel_url
-        else:
-            configObj["channel_url"] = channel_url
-    # lat and lon don't make much sense without the other (so fill with 0s), and alt isn't meaningful without both
-    if lat or lon:
-        configObj["location"] = {"lat": lat or float(0), "lon": lon or float(0)}
-        if alt:
-            configObj["location"]["alt"] = alt
-
-    config = MessageToDict(interface.localNode.localConfig)
-    if config:
-        # Convert inner keys to correct snake/camelCase
-        prefs = {}
-        for pref in config:
-            if mt_config.camel_case:
-                prefs[util.snake_to_camel(pref)] = config[pref]
-            else:
-                prefs[pref] = config[pref]
-        if mt_config.camel_case:
-            configObj["config"] = config
-        else:
-            configObj["config"] = config
-
-    module_config = MessageToDict(interface.localNode.moduleConfig)
-    if module_config:
-        # Convert inner keys to correct snake/camelCase
-        prefs = {}
-        for pref in module_config:
-            if len(module_config[pref]) > 0:
-                prefs[pref] = module_config[pref]
-        if mt_config.camel_case:
-            configObj["module_config"] = prefs
-        else:
-            configObj["module_config"] = prefs
-
+    _out = {}
+    # todo we need owner, url, my node info and the local config
+    info = interface.showInfo()
     config = "# start of Meshtastic configure yaml\n"
-    config += yaml.dump(configObj)
+    config += yaml.dump(
+        json.loads(info.model_dump_json(exclude_none=True, indent=2))
+    )
     print(config)
-    return config
 
 
 def common():

@@ -25,6 +25,7 @@ from . import (
 )
 
 from .constants import BROADCAST_ADDR, LOCAL_ADDR, BROADCAST_NUM, publishingThread
+from .info import Info
 from .known_protocol import protocols
 from .response_handler import ResponseHandler
 from .schemas.mesh import NodeInfo, Channel, Config, ModuleConfig, Position, DeviceMetadata, MyNodeInfo
@@ -33,7 +34,7 @@ from .util import (
     Acknowledgment,
     Timeout,
     our_exit,
-    stripnl,
+    stripnl, clean_nones,
 )
 
 
@@ -47,6 +48,8 @@ class MeshInterface:
     debugOut
     """
     my_node_info: MyNodeInfo = None  # We don't have device info yet
+    my_node: NodeInfo = None
+    localNode: node.Node
     metadata: DeviceMetadata = DeviceMetadata()  # Metadata object
     nodes: Dict[int, NodeInfo] = {}  # Dict with nodes by number
     channels: List[Channel] = [Channel()] * 8  # 8 empty channel definitions
@@ -70,8 +73,7 @@ class MeshInterface:
         self.debugOut = debugOut
         self.isConnected: threading.Event = threading.Event()
         self.noProto: bool = noProto
-        self.localNode: node.Node = node.Node(self, -1)  # We fixup node number later
-
+        self.localNode = node.Node(self, -1)
         self.metadata: Optional[mesh_pb2.DeviceMetadata] = None  # We don't have device metadata yet
         self.responseHandlers: Dict[int, ResponseHandler] = {}  # A map from request ID to the handler
         self.failure = (
@@ -86,6 +88,14 @@ class MeshInterface:
         self.queueStatus: Optional[mesh_pb2.QueueStatus] = None
         self.queue: collections.OrderedDict = collections.OrderedDict()
         self._localChannels = None
+
+    def getNode(self, node_num: Union[int, str]) -> Union[None, NodeInfo]:
+        """Return a node object which contains device settings and channel info"""
+        if isinstance(node_num, str):
+            if node_num in (LOCAL_ADDR, BROADCAST_ADDR):
+                return self.nodes[self.my_node_info.my_node_num]
+        else:
+            return self.nodes[node_num]
 
     def close(self):
         """Shutdown this interface"""
@@ -106,17 +116,19 @@ class MeshInterface:
             logging.error(f"Traceback: {traceback}")
         self.close()
 
-    def showInfo(self, file=sys.stdout) -> str:  # pylint: disable=W0613
+    def showInfo(self, file=sys.stdout) -> Info:  # pylint: disable=W0613
         """Show human-readable summary about this object"""
-        logging.debug("ShowInfo")
-        _out = {
-            "myNodeInfo": self.my_node_info.dict()
-        }
-        _json = json.dumps(_out)
-        print(_json)
 
+        _out: Info = Info(**{
+            "myNodeInfo": self.my_node_info,
+            "myNode": self.getNode(self.my_node_info.my_node_num),
+            "nodes": list(self.nodes.values()),
+            "channels": self.channels
+        })
+        # _json = json.dumps(clean_nones(_out), default=str)
+        return _out
 
-    def showNodes(self, includeSelf: bool = True, file=sys.stdout) -> str:  # pylint: disable=W0613
+    def showNodes(self, include_my: bool = True, file=sys.stdout) -> str:  # pylint: disable=W0613
         """Show table summary of nodes in mesh"""
 
         def formatFloat(value, precision=2, unit="") -> Optional[str]:
@@ -141,7 +153,7 @@ class MeshInterface:
         if self.nodesByNum:
             logging.debug(f"self.nodes:{self.nodes}")
             for _node in self.nodesByNum.values():
-                if not includeSelf and node["num"] == self.localNode.nodeNum:
+                if not include_my and node == self.my_node.nodeNum:
                     continue
 
                 row = {"N": 0, "User": f"UNK: {_node['num']}", "ID": f"!{_node['num']:08x}"}
@@ -205,20 +217,6 @@ class MeshInterface:
         table = tabulate(rows, headers="keys", missingval="N/A", tablefmt="fancy_grid")
         print(table)
         return table
-
-    def getNode(self, nodeId: str, requestChannels: bool = True) -> node.Node:
-        """Return a node object which contains device settings and channel info"""
-        if nodeId in (LOCAL_ADDR, BROADCAST_ADDR):
-            return self.localNode
-        else:
-            n = node.Node(self, nodeId)
-            # Only request device settings and channel info when necessary
-            if requestChannels:
-                logging.debug("About to requestChannels")
-                n.requestChannels()
-                if not n.waitForConfig():
-                    our_exit("Error: Timed out waiting for channels")
-            return n
 
     def sendText(
             self,
@@ -441,37 +439,33 @@ class MeshInterface:
     def sendTelemetry(self, destinationId: Union[int, str] = BROADCAST_ADDR, wantResponse: bool = False,
                       channelIndex: int = 0):
         """Send telemetry and optionally ask for a response"""
-        r = telemetry_pb2.Telemetry()
+        _telemetry = telemetry_pb2.Telemetry()
 
         if self.nodes is not None:
-            node = next(n for n in self.nodes.values() if n["num"] == self.localNode.nodeNum)
-            if node is not None:
-                metrics = node.get("deviceMetrics")
+            _node: NodeInfo = next(n for n in self.nodes.values() if n.num == self.my_node.num)
+            if _node is not None:
+                metrics = _node.device_metrics
                 if metrics:
-                    batteryLevel = metrics.get("batteryLevel")
-                    if batteryLevel is not None:
-                        r.device_metrics.battery_level = batteryLevel
-                    voltage = metrics.get("voltage")
-                    if voltage is not None:
-                        r.device_metrics.voltage = voltage
-                    channel_utilization = metrics.get("channelUtilization")
-                    if channel_utilization is not None:
-                        r.device_metrics.channel_utilization = channel_utilization
-                    air_util_tx = metrics.get("airUtilTx")
-                    if air_util_tx is not None:
-                        r.device_metrics.air_util_tx = air_util_tx
+                    if metrics.battery_level is not None:
+                        _telemetry.device_metrics.battery_level = metrics.battery_level
+                    if metrics.voltage is not None:
+                        _telemetry.device_metrics.voltage = metrics.voltage
+                    if metrics.channel_utilization is not None:
+                        _telemetry.device_metrics.channel_utilization = metrics.channel_utilization
+                    if metrics.air_util_tx is not None:
+                        _telemetry.device_metrics.air_util_tx = metrics.air_util_tx
 
         if wantResponse:
-            onResponse = self.onResponseTelemetry
+            on_response = self.onResponseTelemetry
         else:
-            onResponse = None
+            on_response = None
 
         self.sendData(
-            r,
+            _telemetry,
             destinationId=destinationId,
             portNum=portnums_pb2.PortNum.TELEMETRY_APP,
             wantResponse=wantResponse,
-            onResponse=onResponse,
+            onResponse=on_response,
             channelIndex=channelIndex,
         )
         if wantResponse:
@@ -503,7 +497,7 @@ class MeshInterface:
     def _addResponseHandler(self, requestId: int, callback: Callable):
         self.responseHandlers[requestId] = ResponseHandler(callback)
 
-    def _sendPacket(self, meshPacket: mesh_pb2.MeshPacket, destinationId: Union[int, str] = BROADCAST_ADDR,
+    def _sendPacket(self, meshPacket: mesh_pb2.MeshPacket, destination: Union[int, str] = BROADCAST_ADDR,
                     wantAck: bool = False):
         """Send a MeshPacket to the specified node (or if unspecified, broadcast).
         You probably don't want this - use sendData instead.
@@ -511,57 +505,52 @@ class MeshInterface:
         Returns the sent packet. The id field will be populated in this packet and
         can be used to track future message acks/naks.
         """
-
+        _node_num: int = 0
         # We allow users to talk to the local node before we've completed the full connection flow...
-        if self.my_node_info is not None and destinationId != self.my_node_info.my_node_num:
+        if self.my_node_info is not None and destination != self.my_node_info.my_node_num:
             self._waitConnected()
 
-        toRadio = mesh_pb2.ToRadio()
+        _to_radio = mesh_pb2.ToRadio()
 
-        nodeNum: int = 0
-        if destinationId is None:
+        if destination is None:
             our_exit("Warning: destinationId must not be None")
-        elif isinstance(destinationId, int):
-            nodeNum = destinationId
-        elif destinationId == BROADCAST_ADDR:
-            nodeNum = BROADCAST_NUM
-        elif destinationId == LOCAL_ADDR:
+        elif isinstance(destination, int):
+            _node_num = destination
+        elif destination == BROADCAST_ADDR:
+            _node_num = BROADCAST_NUM
+        elif destination == LOCAL_ADDR:
             if self.my_node_info:
-                nodeNum = self.my_node_info.num
+                _node_num = self.my_node_info.num
             else:
                 our_exit("Warning: No my_node_info found.")
         # A simple hex style nodeid - we can parse this without needing the DB
-        elif destinationId.startswith("!"):
-            nodeNum = int(destinationId[1:], 16)
+        elif destination.startswith("!"):
+            _node_num = int(destination[1:], 16)
         else:
             if self.nodes:
-                node = self.nodes.get(destinationId)
-                if node is None:
-                    our_exit(f"Warning: NodeId {destinationId} not found in DB")
+                _node = self.nodes[destination]
+                if _node is None:
+                    our_exit(f"Warning: NodeId {destination} not found")
                 else:
-                    nodeNum = node["num"]
+                    _node_num = _node.num
             else:
                 logging.warning("Warning: There were no self.nodes.")
 
-        meshPacket.to = nodeNum
-        meshPacket.want_ack = wantAck
-        loraConfig = getattr(self.localNode.localConfig, "lora")
-        hopLimit = getattr(loraConfig, "hop_limit")
-        meshPacket.hop_limit = hopLimit
+        meshPacket.to = _node_num
 
         # if the user hasn't set an ID for this packet (likely and recommended),
         # we should pick a new unique ID so the message can be tracked.
         if meshPacket.id == 0:
             meshPacket.id = self._generatePacketId()
 
-        toRadio.packet.CopyFrom(meshPacket)
+        _to_radio.packet.CopyFrom(meshPacket)
         if self.noProto:
             logging.warning(
                 f"Not sending packet because protocol use is disabled by noProto"
             )
         else:
             logging.debug(f"Sending packet: {stripnl(meshPacket)}")
-            self._sendToRadio(toRadio)
+            self._sendToRadio(_to_radio)
         return meshPacket
 
     def waitForConfig(self):
