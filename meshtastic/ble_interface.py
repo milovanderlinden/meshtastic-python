@@ -179,15 +179,28 @@ class BLEClient:
         self.bleak_client = BleakClient(address, **kwargs)
 
     def discover(self, **kwargs):  # pylint: disable=C0116
+        """ Asynchronous await using
+        [BleakScanner.discover](https://bleak.readthedocs.io/en/latest/api/scanner.html#bleak.BleakScanner.discover)
+        """
         return self.async_await(BleakScanner.discover(**kwargs))
 
     def pair(self, **kwargs):  # pylint: disable=C0116
+        """ Asynchronous await using
+        [BleakClient.pair](https://bleak.readthedocs.io/en/latest/api/client.html#bleak.BleakClient.pair)
+        """
         return self.async_await(self.bleak_client.pair(**kwargs))
 
     def connect(self, **kwargs):  # pylint: disable=C0116
+        """ Asynchronous await using
+            [BleakClient.connect](https://bleak.readthedocs.io/en/latest/api/client.html#bleak.BleakClient.connect)
+        """
         return self.async_await(self.bleak_client.connect(**kwargs))
 
     def disconnect(self, **kwargs):  # pylint: disable=C0116
+        """ Asynchronous await using
+            [BleakClient.disconnect](https://bleak.readthedocs.io/en/latest/api/client.html#bleak.BleakClient
+            .disconnect)
+        """
         self.async_await(self.bleak_client.disconnect(**kwargs))
 
     def read_gatt_char(self, *args, **kwargs):  # pylint: disable=C0116
