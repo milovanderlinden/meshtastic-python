@@ -2,8 +2,16 @@
    To run: python examples/info.py
 """
 
-import meshtastic
-import meshtastic.serial_interface
+try:
+    import meshtastic.serial_interface
+except ModuleNotFoundError:
+    # see if we are in a development environment that does not have a compiled package
+    import sys
+    from pathlib import Path
+    path = str(Path(Path(__file__).parent.absolute()).parent.absolute())
+    sys.path.insert(0, path)
+    import meshtastic.serial_interface
+
 
 iface = meshtastic.serial_interface.SerialInterface()
 

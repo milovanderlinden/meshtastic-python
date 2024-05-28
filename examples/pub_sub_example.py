@@ -6,8 +6,14 @@ import sys
 
 from pubsub import pub
 
-import meshtastic
-import meshtastic.tcp_interface
+try:
+    import meshtastic.tcp_interface
+except ModuleNotFoundError:
+    # see if we are in a development environment that does not have a compiled package
+    from pathlib import Path
+    path = str(Path(Path(__file__).parent.absolute()).parent.absolute())
+    sys.path.insert(0, path)
+    import meshtastic.tcp_interface
 
 # simple arg check
 if len(sys.argv) < 2:

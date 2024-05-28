@@ -4,11 +4,23 @@
 
 import sys
 
-from meshtastic.util import (
-    active_ports_on_supported_devices,
-    detect_supported_devices,
-    get_unique_vendor_ids,
-)
+try:
+    from meshtastic.util import (
+        active_ports_on_supported_devices,
+        detect_supported_devices,
+        get_unique_vendor_ids,
+    )
+except ModuleNotFoundError:
+    # see if we are in a development environment that does not have a compiled package
+    from pathlib import Path
+    path = str(Path(Path(__file__).parent.absolute()).parent.absolute())
+    sys.path.insert(0, path)
+    from meshtastic.util import (
+        active_ports_on_supported_devices,
+        detect_supported_devices,
+        get_unique_vendor_ids,
+    )
+
 
 # simple arg check
 if len(sys.argv) != 1:

@@ -2,8 +2,16 @@
    Before running, connect your machine to the same WiFi network as the radio.
 """
 
-import meshtastic
-import meshtastic.tcp_interface
+try:
+    import meshtastic.tcp_interface
+except ModuleNotFoundError:
+    # see if we are in a development environment that does not have a compiled package
+    import sys
+    from pathlib import Path
+    path = str(Path(Path(__file__).parent.absolute()).parent.absolute())
+    sys.path.insert(0, path)
+    import meshtastic.tcp_interface
+
 
 radio_hostname = "meshtastic.local"  # Can also be an IP
 iface = meshtastic.tcp_interface.TCPInterface(radio_hostname)
