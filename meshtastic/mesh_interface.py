@@ -2,7 +2,6 @@
 """
 
 import collections
-import json
 import logging
 import random
 import sys
@@ -39,13 +38,8 @@ from .util import (
 
 
 class MeshInterface:
-    """Interface class for meshtastic devices
-
-    Properties:
-
-    isConnected
-    nodes
-    debugOut
+    """
+    Interface class for meshtastic devices
     """
     my_node_info: MyNodeInfo = None  # We don't have device info yet
     my_node: NodeInfo = None
@@ -66,9 +60,10 @@ class MeshInterface:
     def __init__(self, debugOut=None, noProto: bool = False) -> None:
         """Constructor
 
-        Keyword Arguments:
-            noProto -- If True, don't try to run our protocol on the
-                       link - just be a dumb serial client.
+        Attributes:
+            debugOut (bool): If `True`, generate debug output
+            noProto (bool): If `True`, don't try to run our protocol on the
+                link - just be a dumb serial client.
         """
         self.debugOut = debugOut
         self.isConnected: threading.Event = threading.Event()
@@ -90,7 +85,14 @@ class MeshInterface:
         self._localChannels = None
 
     def getNode(self, node_num: Union[int, str]) -> Union[None, NodeInfo]:
-        """Return a node object which contains device settings and channel info"""
+        """Return a node object which contains device settings and channel info
+
+        Attributes:
+            node_num (int or str): either `identifier` of the node to get,
+                [LOCAL_ADDR](/constants/#meshtastic.constants.LOCAL_ADDR)
+                or [BROADCAST_ADDR](/constants/#meshtastic.constants.BROADCAST_ADDR)
+
+        """
         if isinstance(node_num, str):
             if node_num in (LOCAL_ADDR, BROADCAST_ADDR):
                 return self.nodes[self.my_node_info.my_node_num]
