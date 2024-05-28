@@ -1,0 +1,3 @@
+# Mesh
+
+::: meshtastic.schemas.mesh

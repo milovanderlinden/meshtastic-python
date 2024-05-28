@@ -1,0 +1,3 @@
+# MQTT
+
+::: meshtastic.schemas.mqtt

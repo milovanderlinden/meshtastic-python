@@ -1,0 +1,3 @@
+# Admin
+
+::: meshtastic.schemas.admin

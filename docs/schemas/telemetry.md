@@ -1,0 +1,3 @@
+# Telemetry
+
+::: meshtastic.schemas.telemetry

@@ -1,0 +1,3 @@
+# XModem
+
+::: meshtastic.schemas.xmodem

@@ -1,0 +1,3 @@
+# Version
+
+::: meshtastic.version

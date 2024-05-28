@@ -1,0 +1,3 @@
+# Config
+
+::: meshtastic.schemas.config

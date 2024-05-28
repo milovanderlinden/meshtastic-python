@@ -1,0 +1,3 @@
+# Atak
+
+::: meshtastic.schemas.atak
