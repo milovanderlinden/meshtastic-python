@@ -1,7 +1,7 @@
 site_name: Meshtastic
 
 theme:
-  name: "material"
+  name: "readthedocs"
 
 
 plugins:
