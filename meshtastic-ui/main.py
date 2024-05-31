@@ -1,27 +1,15 @@
 import flet as ft
+from components import small_black_logo, NodeComponent
 
 
 def main(page: ft.Page):
-    black_logo = """
-<svg width="100%" height="100%" viewBox="0 0 100 55" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
-    <g transform="matrix(0.802386,0,0,0.460028,-421.748,-122.127)">
-        <g transform="matrix(0.579082,0,0,1.01004,460.975,-39.6867)">
-            <path d="M250.908,330.267L193.126,415.005L180.938,406.694L244.802,313.037C246.174,311.024 248.453,309.819 250.889,309.816C253.326,309.814 255.606,311.015 256.982,313.026L320.994,406.536L308.821,414.869L250.908,330.267Z"/>
-        </g>
-        <g transform="matrix(0.582378,0,0,1.01579,485.019,-211.182)">
-            <path d="M87.642,581.398L154.757,482.977L142.638,474.713L75.523,573.134L87.642,581.398Z"/>
-        </g>
-    </g>
-</svg>
-    """
-    page.appbar = ft.AppBar(
-        leading=ft.Image(
-            src=black_logo,
-            width=100,
-            height=100,
-        ),
+
+    appbar = ft.AppBar(
         leading_width=40,
-        title=ft.Text("Meshtastic"),
+        title=ft.Image(
+            src=small_black_logo,
+            height=30,
+        ),
         center_title=False,
         color="#000000",
         bgcolor="#67ea94",
@@ -42,10 +30,16 @@ def main(page: ft.Page):
             ),
         ],
     )
-
     cg = ft.RadioGroup(content=ft.Column([
         ft.Radio(value="red", label="None"),
         ft.Radio(value="green", label="Meshtastic_9e14")]), value="red")
+    page.auto_scroll = True
+    page.scroll = ft.ScrollMode.HIDDEN
+    page.padding = ft.padding.Padding(20, 10, 0, 20)
+
+    floating_action_button = ft.FloatingActionButton(
+        icon=ft.icons.ADD, bgcolor="#67ea94", foreground_color="#000000"
+    )
 
     navigation_bar = ft.NavigationBar(
         selected_index=4,
@@ -57,17 +51,15 @@ def main(page: ft.Page):
             ft.NavigationDestination(icon=ft.icons.SETTINGS_APPLICATIONS_OUTLINED),
         ]
     )
-
-    floating_action_button = ft.FloatingActionButton(
-        icon=ft.icons.ADD, bgcolor="#67ea94", foreground_color="#000000"
+    page.add(
+        appbar,
+        ft.Text("Not connected, select radio below"),
+        cg,
+        floating_action_button,
+        navigation_bar
     )
-
-    # Settings
-    page.auto_scroll = True
-    page.scroll = ft.ScrollMode.HIDDEN
-
-    # Render components
-    page.add(ft.Text("Not connected, select radio below"), cg, navigation_bar, floating_action_button)
+    for i in range (0, 12):
+        page.add(NodeComponent(i))
 
 
 ft.app(target=main)

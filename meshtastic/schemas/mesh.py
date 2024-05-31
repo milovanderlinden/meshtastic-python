@@ -314,6 +314,7 @@ class NodeInfo(BaseModel):
     """
     proto source: mesh.proto
     message: NodeInfo
+
     """
     num: Optional[int] = Field(default=None)
     user: Optional[User] = Field(default=None)
