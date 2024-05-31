@@ -79,13 +79,23 @@ def get_long_name(node: NodeInfo) -> str:
     return "Name not given"
 
 
-class NodeComponent(ft.Row):
+class NodeComponent(ft.Container):
+    def __init__(self, node_id: int):
+        super().__init__()
+        self.content = NodeRow(node_id)
+        self.padding = 20
+        self.width = 400
+        self.alignment = ft.alignment.center
+        self.border_radius = 10
+        self.border = ft.border.all(0.5, ft.colors.WHITE)
+
+
+class NodeRow(ft.Row):
     row_height = 20
-    row_width = 200
+    col_width = 170
 
     def __init__(self, node_id: int):
         super().__init__()
-        self.expand = True,
         # get the node info object
         node = NodeInfo(num=node_id)
         _short_name = get_short_name(node)
@@ -98,9 +108,10 @@ class NodeComponent(ft.Row):
             ),
             ft.Column(
                 [
-                    ft.Row(width=self.row_width, height=self.row_height, controls=[ft.Text(_long_name)]),
-                    ft.Row(width=self.row_width, height=self.row_height, controls=get_coordinates(node)),  # Coordinates or empty
-                    ft.Row(width=self.row_width, height=self.row_height, controls=[ft.Text("40m", selectable=True)]),
+                    ft.Row(width=self.col_width-50, height=self.row_height, controls=[ft.Text(_long_name)]),
+                    ft.Row(width=self.col_width-50, height=self.row_height, controls=get_coordinates(node)),
+                    # Coordinates or empty
+                    ft.Row(width=self.col_width-50, height=self.row_height, controls=[ft.Text("40m", selectable=True)]),
                 ],
                 tight=True,
                 spacing=5,
@@ -108,16 +119,18 @@ class NodeComponent(ft.Row):
             ft.Column(
                 controls=[
                     ft.Row(
-                        width=self.row_width,
+                        width=self.col_width,
                         height=self.row_height,
                         alignment=ft.MainAxisAlignment.END,
                         controls=[
                             ft.Text("74%"),
-                            ft.Icon(ft.icons.BATTERY_4_BAR)
+                            ft.Icon(name=ft.icons.BATTERY_4_BAR,
+                                    color=ft.colors.WHITE, size=18)
                         ]),
-                    ft.Row(width=self.row_width, height=self.row_height, alignment=ft.MainAxisAlignment.END,
-                           controls=[ft.Text("2d"), ft.Icon(ft.icons.CALENDAR_TODAY)]),
-                    ft.Row(width=self.row_width, height=self.row_height, alignment=ft.MainAxisAlignment.END,
+                    ft.Row(width=self.col_width, height=self.row_height, alignment=ft.MainAxisAlignment.END,
+                           controls=[ft.Text("2d"), ft.Icon(name=ft.icons.CALENDAR_TODAY, color=ft.colors.WHITE,
+                                                            size=18)]),
+                    ft.Row(width=self.col_width, height=self.row_height, alignment=ft.MainAxisAlignment.END,
                            controls=[ft.Text("ChUtil 1,1% AirUtilTX 0.6%", selectable=True)]),
                 ],
                 tight=True,

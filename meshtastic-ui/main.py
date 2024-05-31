@@ -30,6 +30,7 @@ def main(page: ft.Page):
             ),
         ],
     )
+
     cg = ft.RadioGroup(content=ft.Column([
         ft.Radio(value="red", label="None"),
         ft.Radio(value="green", label="Meshtastic_9e14")]), value="red")
@@ -58,7 +59,7 @@ def main(page: ft.Page):
         floating_action_button,
         navigation_bar
     )
-    for i in range (0, 12):
+    for i in range(0, 12):
         page.add(NodeComponent(i))
 
 
