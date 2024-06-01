@@ -52,7 +52,7 @@ def get_avatar_color(value: str):
     return colors_lookup[hash(value) % len(colors_lookup)]
 
 
-def get_coordinates(node: NodeInfo) -> List[ft.Control]:
+def get_coordinates(node: NodeInfo, font_size: float) -> List[ft.Control]:
     """ Format the coordinates and return empty when none given"""
     _lon = 0
     _lat = 0
@@ -62,8 +62,8 @@ def get_coordinates(node: NodeInfo) -> List[ft.Control]:
         if node.position.longitude:
             _lat = node.position.longitude
     return [
-        ft.Text(deg_to_dms(_lon, LatLon.LONGITUDE)),
-        ft.Text(deg_to_dms(_lat))
+        ft.Text(value=deg_to_dms(_lon, LatLon.LONGITUDE), size=font_size),
+        ft.Text(value=deg_to_dms(_lat), size=font_size)
     ]
 
 
@@ -83,16 +83,17 @@ class NodeComponent(ft.Container):
     def __init__(self, node_id: int):
         super().__init__()
         self.content = NodeRow(node_id)
-        self.padding = 20
-        self.width = 400
+        self.padding = 5
+        self.width = 300
         self.alignment = ft.alignment.center
         self.border_radius = 10
         self.border = ft.border.all(0.5, ft.colors.WHITE)
 
 
 class NodeRow(ft.Row):
-    row_height = 20
-    col_width = 170
+    row_height = 18
+    col_width = 100
+    font_size = 10
 
     def __init__(self, node_id: int):
         super().__init__()
@@ -103,15 +104,18 @@ class NodeRow(ft.Row):
         self.controls = [
             ft.CircleAvatar(
                 radius=24,
-                content=ft.Text(_short_name),
+                content=ft.Text(_short_name, size=self.font_size),
                 bgcolor=get_avatar_color(_short_name),
             ),
             ft.Column(
                 [
-                    ft.Row(width=self.col_width-50, height=self.row_height, controls=[ft.Text(_long_name)]),
-                    ft.Row(width=self.col_width-50, height=self.row_height, controls=get_coordinates(node)),
+                    ft.Row(width=self.col_width-60, height=self.row_height, controls=[ft.Text(_long_name,
+                                                                                              size=self.font_size)]),
+                    ft.Row(width=self.col_width-60, height=self.row_height, controls=get_coordinates(node, self.font_size)),
                     # Coordinates or empty
-                    ft.Row(width=self.col_width-50, height=self.row_height, controls=[ft.Text("40m", selectable=True)]),
+                    ft.Row(width=self.col_width-60, height=self.row_height, controls=[
+                        ft.Text(value="40m", selectable=True, size=self.font_size)
+                    ]),
                 ],
                 tight=True,
                 spacing=5,
@@ -128,10 +132,14 @@ class NodeRow(ft.Row):
                                     color=ft.colors.WHITE, size=18)
                         ]),
                     ft.Row(width=self.col_width, height=self.row_height, alignment=ft.MainAxisAlignment.END,
-                           controls=[ft.Text("2d"), ft.Icon(name=ft.icons.CALENDAR_TODAY, color=ft.colors.WHITE,
-                                                            size=18)]),
+                           controls=[
+                               ft.Text(value="2d", size=self.font_size),
+                               ft.Icon(name=ft.icons.CALENDAR_TODAY, color=ft.colors.WHITE, size=18)
+                           ]),
                     ft.Row(width=self.col_width, height=self.row_height, alignment=ft.MainAxisAlignment.END,
-                           controls=[ft.Text("ChUtil 1,1% AirUtilTX 0.6%", selectable=True)]),
+                           controls=[
+                               ft.Text(value="ChUtil 1,1% AirUtilTX 0.6%", selectable=True, size=self.font_size)
+                           ]),
                 ],
                 tight=True,
                 spacing=5,

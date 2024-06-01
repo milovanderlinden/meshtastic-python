@@ -34,9 +34,8 @@ def main(page: ft.Page):
     cg = ft.RadioGroup(content=ft.Column([
         ft.Radio(value="red", label="None"),
         ft.Radio(value="green", label="Meshtastic_9e14")]), value="red")
-    page.auto_scroll = True
-    page.scroll = ft.ScrollMode.HIDDEN
-    page.padding = ft.padding.Padding(20, 10, 0, 20)
+
+    page.padding = ft.padding.Padding(10, 10, 10, 10)
 
     floating_action_button = ft.FloatingActionButton(
         icon=ft.icons.ADD, bgcolor="#67ea94", foreground_color="#000000"
@@ -54,13 +53,20 @@ def main(page: ft.Page):
     )
     page.add(
         appbar,
-        ft.Text("Not connected, select radio below"),
-        cg,
+        #ft.Text("Not connected, select radio below"),
+        #cg,
         floating_action_button,
         navigation_bar
     )
-    for i in range(0, 12):
-        page.add(NodeComponent(i))
+
+    gv = ft.GridView(expand=True, max_extent=400, child_aspect_ratio=3, padding=2)
+    page.add(gv)
+
+    for i in range(50):
+        gv.controls.append(
+            NodeComponent(i)
+        )
+    page.update()
 
 
 ft.app(target=main)
