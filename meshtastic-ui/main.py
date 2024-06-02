@@ -1,72 +1,81 @@
 import flet as ft
-from components import small_black_logo, NodeComponent
+from components import AppBar, NavigationBar, NodeGridComponent
 
 
-def main(page: ft.Page):
+def main(page: ft.Page) -> None:
+    page.title = "Meshtastic - python"
 
-    appbar = ft.AppBar(
-        leading_width=40,
-        title=ft.Image(
-            src=small_black_logo,
-            height=30,
-        ),
-        center_title=False,
-        color="#000000",
-        bgcolor="#67ea94",
-        actions=[
-            ft.IconButton(ft.icons.CLOUD_OFF),
-            ft.PopupMenuButton(
-                items=[
-                    ft.PopupMenuItem(text="Debug panel"),
-                    ft.PopupMenuItem(text="Radio configuration"),
-                    ft.PopupMenuItem(text="Export rangetest.csv"),
-                    ft.PopupMenuItem(text="Theme"),
-                    ft.PopupMenuItem(text="Language"),
-                    ft.PopupMenuItem(text="Show introduction"),
-                    ft.PopupMenuItem(text="Quick chat options"),
-                    ft.PopupMenuItem(text="About"),
+    def route_change(e: ft.RouteChangeEvent) -> None:
+        page.views.clear()
 
-                ]
-            ),
-        ],
-    )
-
-    cg = ft.RadioGroup(content=ft.Column([
-        ft.Radio(value="red", label="None"),
-        ft.Radio(value="green", label="Meshtastic_9e14")]), value="red")
-
-    page.padding = ft.padding.Padding(10, 10, 10, 10)
-
-    floating_action_button = ft.FloatingActionButton(
-        icon=ft.icons.ADD, bgcolor="#67ea94", foreground_color="#000000"
-    )
-
-    navigation_bar = ft.NavigationBar(
-        selected_index=4,
-        destinations=[
-            ft.NavigationDestination(icon=ft.icons.CHAT),
-            ft.NavigationDestination(icon=ft.icons.PEOPLE),
-            ft.NavigationDestination(icon=ft.icons.MAP_OUTLINED),
-            ft.NavigationDestination(icon=ft.icons.WIFI_TETHERING),
-            ft.NavigationDestination(icon=ft.icons.SETTINGS_APPLICATIONS_OUTLINED),
-        ]
-    )
-    page.add(
-        appbar,
-        #ft.Text("Not connected, select radio below"),
-        #cg,
-        floating_action_button,
-        navigation_bar
-    )
-
-    gv = ft.GridView(expand=True, max_extent=400, child_aspect_ratio=3, padding=2)
-    page.add(gv)
-
-    for i in range(50):
-        gv.controls.append(
-            NodeComponent(i)
+        page.views.append(
+            ft.View(
+                route="/",
+                controls=[
+                    AppBar("Home"),
+                    ft.Text(value="Home", size=30),
+                    ft.ElevatedButton(text='Show nodes', on_click=lambda _: page.go('/nodes')),
+                    ft.ElevatedButton(text='Show devices', on_click=lambda _: page.go('/devices')),
+                    NavigationBar(0)
+                ],
+                vertical_alignment=ft.MainAxisAlignment.CENTER,
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                spacing=26
+            )
         )
-    page.update()
+
+        if page.route == '/nodes':
+            page.views.append(
+                ft.View(
+                    route="/nodes",
+                    controls=[
+                        AppBar("Nodes"),
+                        ft.Text(value="Nodes", size=30),
+                        ft.ElevatedButton(text='Back', on_click=lambda _: page.go('/')),
+                        NavigationBar(4),
+                        NodeGridComponent()
+                    ],
+                    vertical_alignment=ft.MainAxisAlignment.CENTER,
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    spacing=26
+                )
+            )
+
+        if page.route == '/devices':
+            cg = ft.RadioGroup(content=ft.Column([
+                ft.Radio(value="red", label="None"),
+                ft.Radio(value="green", label="Meshtastic_9e14")]), value="red")
+
+            page.views.append(
+                ft.View(
+                    route="/devices",
+                    controls=[
+                        AppBar("Devices"),
+                        ft.Text(value="Devices", size=30),
+                        ft.ElevatedButton(text='Back', on_click=lambda _: page.go('/')),
+                        NavigationBar(3),
+                        ft.Text("Not connected, select radio below"),
+                        cg
+                    ],
+                    vertical_alignment=ft.MainAxisAlignment.CENTER,
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    spacing=26
+                )
+            )
+
+        page.update()
+
+    def view_pop(e: ft.ViewPopEvent) -> None:
+        page.views.pop()
+        top_view: ft.View = page.views[-1]
+        page.go(top_view.route)
+
+    page.on_route_change = route_change
+    page.on_view_pop = view_pop
+    page.go(page.route)
 
 
-ft.app(target=main)
+if __name__ == '__main__':
+    ft.app(target=main)
+
+
